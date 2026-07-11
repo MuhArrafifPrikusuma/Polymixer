@@ -23,8 +23,6 @@ func TakeArg(arg *Arguments) {
 		if err != nil {
 			log.Fatalf("Failed to open file 1: %v\n", err)
 		}
-
-		arg.File1 = file
 		fmt.Println("Succesfully opened:", arg.File1.Name())
 
 		file, err = os.Open(os.Args[2])
@@ -37,4 +35,8 @@ func TakeArg(arg *Arguments) {
 		fmt.Println("Succesfully opened:", arg.File2.Name())
 
 	}
+}
+
+func getHeader() {
+
 }
