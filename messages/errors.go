@@ -9,3 +9,11 @@ func E_open_file(fileName string, err error) {
 func E_read(err error) {
 	log.Fatalf("Failed to read %v", err)
 }
+
+func E_stat_read(err error) {
+	log.Fatalf("Failed to retrieve file info %v", err)
+}
+
+func E_index(str string) {
+	log.Fatalf("%v not found!", str)
+}

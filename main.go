@@ -1,7 +1,7 @@
 package main
 
 import (
-	"mp3ToPDF/files"
+	"PolyMixer/files"
 )
 
 func main() {

@@ -1,9 +1,9 @@
 package files
 
 import (
+	"PolyMixer/messages"
 	"bytes"
 	"log"
-	"mp3ToPDF/messages"
 	"os"
 )
 
@@ -13,10 +13,10 @@ type Arguments struct {
 
 func TakeArg(arg *Arguments) {
 	if len(os.Args) < 2 {
-		log.Fatal("Error: Please provide a valid file path")
+		log.Fatal("Error: Please insert files")
 	}
 	if len(os.Args) > 3 {
-		log.Fatal("Error: maximum arguments exceeded!")
+		log.Fatal("Cannot process more than 2 files... yet")
 	}
 
 	if len(os.Args) >= 3 {
@@ -36,7 +36,6 @@ func TakeArg(arg *Arguments) {
 		arg.File2 = file
 		fileType = getHeader(arg.File2)
 		messages.S_open_file(arg.File2, fileType)
-
 	}
 }
 

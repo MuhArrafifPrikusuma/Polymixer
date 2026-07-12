@@ -1,15 +1,14 @@
 package files
 
 import (
-	"log"
-	"mp3ToPDF/messages"
+	"PolyMixer/messages"
 	"os"
 )
 
 func mp3_get_body(file *os.File) []byte {
 	fileInfo, err := file.Stat()
 	if err != nil {
-		log.Fatal("Could not retrive file info")
+		messages.E_stat_read(err)
 	}
 
 	buf := make([]byte, fileInfo.Size())

@@ -1,3 +1,3 @@
-module mp3ToPDF
+module PolyMixer
 
 go 1.26.5
