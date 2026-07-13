@@ -62,14 +62,33 @@ func Find_xref(f *os.File) {
 }
 
 func Find_last_obj_idx_and_last_obj_id(xref_start_idx int, byteSlice *[]byte) {
+	// [int] is for the count of how many obj been found, and int for that idx
+	objFound := make(map[int]int, 0)
+	var countFoundObj int
 	target := []byte("obj")
 	sliceLen := len(*byteSlice)
 	n := 100
 	sliceStart := sliceLen - n
 	currentSlice := (*byteSlice)[sliceStart:sliceLen]
-	currentLen := len(currentSlice)
+	// NOTE: i think i won't use this but im not sure yet
+	//	currentLen := len(currentSlice)
 
 	// TODO: find a way to search for target and make sure that there is only 2 obj at max with one as the starting obj and other endobj right before xref
+	for {
+		objIdx := bytes.Index(currentSlice, target)
+		if objIdx != 0 {
+			countFoundObj++
+			objFound[countFoundObj] = objIdx
+
+		}
+		if countFoundObj > 2 {
+			currentSlice = currentSlice[objFound[countFoundObj]+1 : sliceLen]
+
+			for i := range countFoundObj {
+				objFound[i-1] = objFound[countFoundObj]
+			}
+		}
+	}
 }
 
 // TODO: find last xref then iterate back to find last endobj then find the last obj id then append

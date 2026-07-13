@@ -47,6 +47,7 @@ func getHeader(file *os.File) string {
 		messages.E_read(err)
 	}
 	if bytes.HasPrefix(buffer, []byte("ID3")) {
+		mp3_get_body(file)
 		return "MP3"
 	} else if bytes.HasPrefix(buffer, []byte("%PDF")) {
 		return "PDF"
