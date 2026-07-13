@@ -12,16 +12,16 @@ func mp3_get_body(file *os.File) []byte {
 	if err != nil {
 		messages.E_stat_read(err)
 	}
-
+	fmt.Printf("%v File info: \n", fileInfo.Name())
+	messages.S_file_size("MP3", "full size", float64(fileInfo.Size()), messages.MB)
 	buf := make([]byte, fileInfo.Size())
-	fmt.Printf("MP3 file size: %vMB\n", len(buf)/1048576)
 
 	_, err = file.ReadAt(buf, 0)
 	if err != nil {
 		messages.E_read(err)
 	}
 	mp3Body := buf[16:]
-	fmt.Printf("Headless size: %vMB\n", len(mp3Body)/1048576)
+	messages.S_file_size("MP3", "full size", float64(len(mp3Body)), messages.MB)
 	return mp3Body
 }
 
