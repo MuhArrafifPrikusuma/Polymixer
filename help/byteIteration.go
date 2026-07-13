@@ -58,49 +58,33 @@ func Find_xref(f *os.File) {
 	xref_startIdx := bytes.Index(buf, target)
 	byteSlice := buf[:xref_startIdx]
 
-	Find_last_obj_idx_and_last_obj_id(xref_startIdx, &byteSlice)
+	Find_last_obj_idx(xref_startIdx, &byteSlice)
 }
 
-func Find_last_obj_idx_and_last_obj_id(xref_start_idx int, byteSlice *[]byte) {
-	// [int] is for the count of how many obj been found, and int for that idx
-	objFound := make(map[uint32]int)
-	var countFoundObj uint32
-	target := []byte("obj")
-	sliceLen := len(*byteSlice)
-	n := 10
-	sliceStart := sliceLen - n
-	currentSlice := (*byteSlice)[sliceStart:sliceLen]
-	appearAsOften := make(map[uint32]int)
-
-	for {
-		objIdx := bytes.Index(currentSlice, target)
-		if objIdx != -1 {
-			countFoundObj++
-			objFound[countFoundObj] = objIdx
-			appearAsOften[countFoundObj] += 1
-		} else if objIdx == -1 {
-			currentSlice = currentSlice[objFound[countFoundObj]-n : sliceLen]
-		}
-		// if loop through the same thing over and over then it's too smal and we should expand
-		if appearAsOften[countFoundObj] > 1 {
-			currentSlice = currentSlice[objFound[countFoundObj]-n : sliceLen]
-
-			for i := range countFoundObj {
-				appearAsOften[i] = 0
-			}
-			countFoundObj = 0
-			continue
-		}
-		if countFoundObj > 2 {
-			currentSlice = currentSlice[objFound[countFoundObj]+1 : sliceLen]
-
-			for i := range countFoundObj {
-				objFound[i-1] = objFound[i]
-				objFound[i] = 0
-			}
-
-		}
+// return the last object index
+func Find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, lastObjIdx int) {
+	if byteSlice == nil || len(*byteSlice) == 0 {
+		return -1, -1
 	}
+
+	searchEnd := xref_start_idx
+	if searchEnd > len(*byteSlice) {
+		searchEnd = len(*byteSlice)
+	}
+
+	searchZone := (*byteSlice)[0:searchEnd]
+
+	lastEndObjIdx = bytes.LastIndex(searchZone, []byte("endobj"))
+	if lastEndObjIdx == -1 {
+		return -1, -1
+	}
+	searchZone = searchZone[0:lastEndObjIdx]
+	lastObjIdx = bytes.LastIndex(searchZone, []byte(" obj"))
+	if lastObjIdx == -1 {
+		return -1, -1
+	}
+	lastObjIdx = lastObjIdx + 1
+	return lastEndObjIdx, lastObjIdx
 }
 
 // TODO: find last xref then iterate back to find last endobj then find the last obj id then append
