@@ -64,7 +64,7 @@ func Find_xref(f *os.File) {
 // return the last object index
 func Find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, lastObjIdx int) {
 	if byteSlice == nil || len(*byteSlice) == 0 {
-		return -1, -1
+		messages.E_byte_slice_too_small()
 	}
 
 	searchEnd := xref_start_idx
@@ -76,12 +76,12 @@ func Find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, la
 
 	lastEndObjIdx = bytes.LastIndex(searchZone, []byte("endobj"))
 	if lastEndObjIdx == -1 {
-		return -1, -1
+		messages.E_index("last endobj")
 	}
 	searchZone = searchZone[0:lastEndObjIdx]
 	lastObjIdx = bytes.LastIndex(searchZone, []byte(" obj"))
 	if lastObjIdx == -1 {
-		return -1, -1
+		messages.E_index("last object")
 	}
 	lastObjIdx = lastObjIdx + 1
 	return lastEndObjIdx, lastObjIdx
