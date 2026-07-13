@@ -21,7 +21,7 @@ func mp3_get_body(file *os.File) []byte {
 		messages.E_read(err)
 	}
 	mp3Body := buf[16:]
-	messages.S_file_size("MP3", "full size", float64(len(mp3Body)), messages.MB)
+	messages.S_file_size("MP3", "headless size", float64(len(mp3Body)), messages.MB)
 	return mp3Body
 }
 
