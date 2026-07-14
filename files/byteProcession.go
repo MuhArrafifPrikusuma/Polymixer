@@ -8,13 +8,13 @@ import (
 )
 
 // basically cut his head we don't need it
-func mp3_get_body(file *os.File) []byte {
+func mp3_get_body(file *os.File) *os.File {
 	fileInfo, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
 	}
-	fmt.Printf("%v File info: \n", fileInfo.Name())
-	messages.S_file_size("MP3", "full size", float64(fileInfo.Size()), messages.MB)
+	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
+	messages.S_file_size("MP3", "full", float64(fileInfo.Size()), messages.MB)
 	buf := make([]byte, fileInfo.Size())
 
 	_, err = file.ReadAt(buf, 0)
@@ -22,19 +22,31 @@ func mp3_get_body(file *os.File) []byte {
 		messages.E_read(err)
 	}
 	mp3Body := buf[16:]
-	messages.S_file_size("MP3", "headless size", float64(len(mp3Body)), messages.MB)
-	return mp3Body
+	messages.S_file_size("MP3", "headless", float64(len(mp3Body)), messages.MB)
+
+	mp3Cpy, err := os.Open(fileInfo.Name())
+	if err != nil {
+		messages.E_open_file(fileInfo.Name(), err)
+	}
+	return mp3Cpy
 }
 
 // NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
-func pdf_preserve_area_for_mp3_embed(file *os.File) {
+func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
 	fileInfo, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
 	}
-	fmt.Printf("%v File info: \n", fileInfo.Name())
+	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
 	xrefStartIdx, rawBytes := help.Find_xref(file)
 	endObjIdx, objIdx := help.Find_last_obj_idx(xrefStartIdx, rawBytes)
-	objId := help.Find_obj_id(objIdx, rawBytes)
-	help.Create_new_obj(endObjIdx, objId)
+	objId = help.Find_obj_id(objIdx, rawBytes)
+	appendMp3At = help.Find_spot_for_new_obj(endObjIdx, xrefStartIdx, file)
+
+	pdfCpy, err = os.Open(fileInfo.Name())
+	if err != nil {
+		messages.E_open_file(fileInfo.Name(), err)
+	}
+
+	return objId, appendMp3At, pdfCpy
 }
