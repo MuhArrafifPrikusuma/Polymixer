@@ -37,3 +37,7 @@ func S_file_size(fileType, extraInfo string, size float64, viewSizeIn FileSize) 
 func S_found_at_index(target string, idx int) {
 	fmt.Printf("[SUCCESS]Found '%v' at index %v\n", target, idx)
 }
+
+func S_found_id(id int) {
+	fmt.Printf("[SUCCESS]Found last obj id: %v\n", id)
+}
