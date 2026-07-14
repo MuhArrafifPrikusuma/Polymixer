@@ -3,6 +3,7 @@ package help
 import (
 	"PolyMixer/messages"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -11,11 +12,10 @@ import (
 // NOTE: if fail this is no longer needed
 func Find_xref(f *os.File) (xrefStrtIdx int, bs *[]byte) {
 	fileStat, err := f.Stat()
-	defer f.Close()
 	if err != nil {
 		messages.E_stat_read(err)
 	}
-	messages.S_file_size("PDF", "full size", float64(fileStat.Size()), messages.MB)
+	messages.S_file_size("PDF", "full", float64(fileStat.Size()), messages.MB)
 	buf := make([]byte, fileStat.Size())
 
 	_, err = f.ReadAt(buf, 0)
@@ -65,13 +65,16 @@ func Find_obj_id(lastObjIdx int, byteSlice *[]byte) int {
 	searchZone := (*byteSlice)[0:lastObjIdx]
 
 	var line_feed_AfterId, line_feed_BeforeId int
+	lineFeedAsStartIndex := bytes.LastIndex(searchZone, []byte("\n"))
+	messages.S_found_at_index("line feed", lineFeedAsStartIndex)
 	for i := range 3 {
 		whiteSpaceBeforeObjIdx := bytes.LastIndex(searchZone, []byte(" "))
-		lineFeedAsStartIndex := bytes.LastIndex(searchZone, []byte("\n"))
 		if whiteSpaceBeforeObjIdx == -1 {
-			messages.E_index("Line feed")
+			messages.E_index("white space")
+		} else if lineFeedAsStartIndex == -1 {
+			messages.E_index("line feed")
 		}
-		messages.S_found_at_index("Line feed", whiteSpaceBeforeObjIdx)
+		messages.S_found_at_index("white space", whiteSpaceBeforeObjIdx)
 		if i < 2 {
 			line_feed_AfterId = whiteSpaceBeforeObjIdx
 			searchZone = searchZone[0 : line_feed_AfterId-(i+1)]
@@ -91,6 +94,34 @@ func Find_obj_id(lastObjIdx int, byteSlice *[]byte) int {
 	return id
 }
 
-func Create_new_obj(lastObjIdx, objId int) {
+// NOTE: if fails this will also need to change ofcourse
+func Find_spot_for_new_obj(lastObjIdx, xrefStrtIdx int, file *os.File) int {
+	fileStat, err := file.Stat()
+	if err != nil {
+		messages.E_stat_read(err)
+	}
+	buf := make([]byte, fileStat.Size())
 
+	_, err = file.ReadAt(buf, 0)
+	if err != nil {
+		messages.E_read(err)
+	}
+	findLastLineFeed := buf[lastObjIdx:xrefStrtIdx]
+	appendToIdx := bytes.LastIndex(findLastLineFeed, []byte("\n")) + 1
+	if appendToIdx == -1 {
+		messages.E_index("line feed")
+	}
+	messages.S_found_at_index("line feed", appendToIdx)
+
+	return appendToIdx
+}
+
+func Mix_MP3_and_PDF(filePdf, fileMp3 *os.File, appendToIdx, lastObjId int) (buf []byte) {
+	fmt.Printf("[PROCESS] Mixing files\n")
+	fileStat, err := filePdf.Stat()
+	if err != nil {
+		messages.E_stat_read(err)
+	}
+	buf = make([]byte, fileStat.Size())
+	return buf
 }

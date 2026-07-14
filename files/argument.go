@@ -1,10 +1,13 @@
 package files
 
 import (
+	"PolyMixer/help"
 	"PolyMixer/messages"
 	"bytes"
 	"log"
 	"os"
+
+	"golang.org/x/tools/go/analysis/passes/appends"
 )
 
 type Arguments struct {
@@ -19,13 +22,16 @@ func TakeArg(arg *Arguments) {
 		log.Fatal("Cannot process more than 2 files... yet")
 	}
 
+	var lastObjId, appendToId int
+	var ptrMp3, ptrPdf *os.File
+	var fileType string
 	if len(os.Args) >= 3 {
 		file, err := os.Open(os.Args[1])
 		if err != nil {
 			messages.E_open_file(os.Args[1], err)
 		}
 		arg.File1 = file
-		fileType := getHeader(arg.File1)
+		fileType, lastObjId, appendToId, ptrMp3, ptrPdf = getHeader(arg.File1)
 		messages.S_open_file(arg.File1, fileType)
 
 		file, err = os.Open(os.Args[2])
@@ -34,12 +40,20 @@ func TakeArg(arg *Arguments) {
 			messages.E_open_file(os.Args[2], err)
 		}
 		arg.File2 = file
-		fileType = getHeader(arg.File2)
+		fileType, tmplastObjId, tmpappendToId, tmpptrMp3, tmpptrPdf := getHeader(arg.File2)
+		if fileType == "PDF" {
+			lastObjId = tmplastObjId
+			appendToId = tmpappendToId
+			ptrPdf = tmpptrPdf
+		} else if fileType == "MP3" {
+			ptrMp3 = tmpptrMp3
+		}
 		messages.S_open_file(arg.File2, fileType)
 	}
+	help.Mix_MP3_and_PDF(ptrPdf, ptrMp3, appendToId, lastObjId)
 }
 
-func getHeader(file *os.File) string {
+func getHeader(file *os.File) (strReturn string, lastObjId, appendToId int, ptrMp3, ptrPdf *os.File) {
 	buffer := make([]byte, 4)
 
 	_, err := file.ReadAt(buffer, 0)
@@ -47,11 +61,13 @@ func getHeader(file *os.File) string {
 		messages.E_read(err)
 	}
 	if bytes.HasPrefix(buffer, []byte("ID3")) {
-		mp3_get_body(file)
-		return "MP3"
+		ptrMp3 = mp3_get_body(file)
+		strReturn = "MP3"
+		return strReturn, 0, 0, ptrMp3, nil
 	} else if bytes.HasPrefix(buffer, []byte("%PDF")) {
-		pdf_preserve_area_for_mp3_embed(file)
-		return "PDF"
+		lastObjId, appendToId, ptrPdf = Pdf_open(file)
+		strReturn = "PDF"
+		return strReturn, lastObjId, appendToId, nil, ptrPdf
 	}
-	return "unknown file types"
+	return "unknown file type", 0, 0, nil, nil
 }
