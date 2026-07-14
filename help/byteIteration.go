@@ -3,10 +3,13 @@ package help
 import (
 	"PolyMixer/messages"
 	"bytes"
+	"log"
+	"math"
 	"os"
+	"strconv"
 )
 
-func Find_xref(f *os.File) {
+func find_xref(f *os.File) (bs *[]byte) {
 	target := []byte("xref")
 	fileStat, err := f.Stat()
 	defer f.Close()
@@ -19,11 +22,12 @@ func Find_xref(f *os.File) {
 	xref_startIdx := bytes.Index(buf, target)
 	byteSlice := buf[:xref_startIdx]
 
-	Find_last_obj_idx(xref_startIdx, &byteSlice)
+	find_last_obj_idx(xref_startIdx, &byteSlice)
+	return &byteSlice
 }
 
 // return the last object index
-func Find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, lastObjIdx int) {
+func find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, lastObjIdx int) {
 	if byteSlice == nil || len(*byteSlice) == 0 {
 		messages.E_byte_slice_too_small()
 	}
@@ -48,9 +52,35 @@ func Find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, la
 	return lastEndObjIdx, lastObjIdx
 }
 
-// TODO: find last xref then iterate back to find last endobj then find the last obj id then append
-// to last_endobj_idx + 1 start with 1010 and end with 1010 places all of the data inside obj stream and
-// don't reference it on xref
-func Find_places_for_newObj(last_endobj_idx, last_obj_id int) {
+func find_obj_id(lastObjIdx int, byteSlice *[]byte) int {
+	searchZone := (*byteSlice)[0:lastObjIdx]
+	data := *byteSlice
+
+	var line_feed_AfterId, line_feed_BeforeId int
+	for i := range 2 {
+		whiteSpaceBeforeObjIdx := bytes.LastIndex(searchZone, []byte("\n"))
+		if i < 1 {
+			line_feed_AfterId = whiteSpaceBeforeObjIdx
+			searchZone = searchZone[0 : line_feed_AfterId-1]
+		} else {
+			line_feed_BeforeId = whiteSpaceBeforeObjIdx
+		}
+	}
+
+	searchZone = data[line_feed_BeforeId:line_feed_AfterId]
+	searchZone = bytes.TrimSpace(searchZone)
+	ids := bytes.Fields(searchZone)
+
+	objId := ids[0]
+
+	id, err := strconv.Atoi(string(objId))
+	if err != nil {
+		log.Fatal("placeholder")
+	}
+
+	return id
+}
+
+func find_places_for_new_bin(lastEndObjIdx int) {
 
 }
