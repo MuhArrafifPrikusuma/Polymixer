@@ -3,34 +3,38 @@ package help
 import (
 	"PolyMixer/messages"
 	"bytes"
-	"log"
-	"math"
+	"io"
 	"os"
 	"strconv"
 )
 
-func find_xref(f *os.File) (bs *[]byte) {
-	target := []byte("xref")
+func Find_xref(f *os.File) (xrefStrtIdx int, bs *[]byte) {
 	fileStat, err := f.Stat()
 	defer f.Close()
 	if err != nil {
 		messages.E_stat_read(err)
 	}
-
+	messages.S_file_size("PDF", "full size", float64(fileStat.Size()), messages.MB)
 	buf := make([]byte, fileStat.Size())
 
-	xref_startIdx := bytes.Index(buf, target)
-	byteSlice := buf[:xref_startIdx]
+	_, err = f.ReadAt(buf, 0)
+	if err != nil && err != io.EOF {
+		messages.E_read(err)
+	}
 
-	find_last_obj_idx(xref_startIdx, &byteSlice)
-	return &byteSlice
+	target := []byte("xref")
+	xref_startIdx := bytes.Index(buf, target)
+	if xref_startIdx == -1 {
+		messages.E_byte_slice_too_small(xref_startIdx)
+	}
+	messages.S_found_at_index(string(target), xref_startIdx)
+	byteSlice := buf[:xref_startIdx]
+	messages.S_file_size("PDF", "without xref", float64(len(byteSlice)), messages.MB)
+	return xref_startIdx, &byteSlice
 }
 
 // return the last object index
-func find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, lastObjIdx int) {
-	if byteSlice == nil || len(*byteSlice) == 0 {
-		messages.E_byte_slice_too_small()
-	}
+func Find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, lastObjIdx int) {
 
 	searchEnd := xref_start_idx
 	if searchEnd > len(*byteSlice) {
@@ -43,22 +47,28 @@ func find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, la
 	if lastEndObjIdx == -1 {
 		messages.E_index("last endobj")
 	}
+	messages.S_found_at_index("endobj", lastEndObjIdx)
 	searchZone = searchZone[0:lastEndObjIdx]
 	lastObjIdx = bytes.LastIndex(searchZone, []byte(" obj"))
 	if lastObjIdx == -1 {
 		messages.E_index("last object")
 	}
+	messages.S_found_at_index(" obj", lastObjIdx)
 	lastObjIdx = lastObjIdx + 1
 	return lastEndObjIdx, lastObjIdx
 }
 
-func find_obj_id(lastObjIdx int, byteSlice *[]byte) int {
+func Find_obj_id(lastObjIdx int, byteSlice *[]byte) int {
 	searchZone := (*byteSlice)[0:lastObjIdx]
 	data := *byteSlice
 
 	var line_feed_AfterId, line_feed_BeforeId int
 	for i := range 2 {
 		whiteSpaceBeforeObjIdx := bytes.LastIndex(searchZone, []byte("\n"))
+		if whiteSpaceBeforeObjIdx == -1 {
+			messages.E_index("\\n")
+		}
+		messages.S_found_at_index("\\n", whiteSpaceBeforeObjIdx)
 		if i < 1 {
 			line_feed_AfterId = whiteSpaceBeforeObjIdx
 			searchZone = searchZone[0 : line_feed_AfterId-1]
@@ -69,18 +79,19 @@ func find_obj_id(lastObjIdx int, byteSlice *[]byte) int {
 
 	searchZone = data[line_feed_BeforeId:line_feed_AfterId]
 	searchZone = bytes.TrimSpace(searchZone)
+
 	ids := bytes.Fields(searchZone)
 
 	objId := ids[0]
 
 	id, err := strconv.Atoi(string(objId))
 	if err != nil {
-		log.Fatal("placeholder")
+		messages.E_strconv_atoi(err)
 	}
 
 	return id
 }
 
-func find_places_for_new_bin(lastEndObjIdx int) {
+func Create_new_obj(lastObjIdx, objId int) {
 
 }

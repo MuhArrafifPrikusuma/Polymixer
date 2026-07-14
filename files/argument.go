@@ -50,6 +50,7 @@ func getHeader(file *os.File) string {
 		mp3_get_body(file)
 		return "MP3"
 	} else if bytes.HasPrefix(buffer, []byte("%PDF")) {
+		pdf_preserve_area_for_mp3_embed(file)
 		return "PDF"
 	}
 	return "unknown file types"
