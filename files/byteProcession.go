@@ -1,6 +1,7 @@
 package files
 
 import (
+	"PolyMixer/help"
 	"PolyMixer/messages"
 	"fmt"
 	"os"
@@ -25,10 +26,15 @@ func mp3_get_body(file *os.File) []byte {
 	return mp3Body
 }
 
-// func pdf_mutilation(file *os.File) (head, metadata, body []byte) {
-//
-// }
-
-func header_arrangement(b []byte) {
-
+// NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
+func pdf_preserve_area_for_mp3_embed(file *os.File) {
+	fileInfo, err := file.Stat()
+	if err != nil {
+		messages.E_stat_read(err)
+	}
+	fmt.Printf("%v File info: \n", fileInfo.Name())
+	xrefStartIdx, rawBytes := help.Find_xref(file)
+	endObjIdx, objIdx := help.Find_last_obj_idx(xrefStartIdx, rawBytes)
+	objId := help.Find_obj_id(objIdx, rawBytes)
+	help.Create_new_obj(endObjIdx, objId)
 }
