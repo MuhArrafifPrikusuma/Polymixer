@@ -6,8 +6,6 @@ import (
 	"bytes"
 	"log"
 	"os"
-
-	"golang.org/x/tools/go/analysis/passes/appends"
 )
 
 type Arguments struct {
