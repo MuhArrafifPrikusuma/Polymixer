@@ -1,12 +1,12 @@
 package help
 
 import (
-	"PolyMixer/messages"
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"strconv"
+
+	"PolyMixer/messages"
 )
 
 // NOTE: if fail this is no longer needed
@@ -15,7 +15,7 @@ func Find_xref(f *os.File) (xrefStrtIdx int, bs *[]byte) {
 	if err != nil {
 		messages.E_stat_read(err)
 	}
-	messages.S_file_size("PDF", "full", float64(fileStat.Size()), messages.MB)
+	messages.S_file_size("PDF", "full", float64(fileStat.Size()))
 	buf := make([]byte, fileStat.Size())
 
 	_, err = f.ReadAt(buf, 0)
@@ -30,14 +30,13 @@ func Find_xref(f *os.File) (xrefStrtIdx int, bs *[]byte) {
 	}
 	messages.S_found_at_index(string(target), xref_startIdx)
 	byteSlice := buf[0:xref_startIdx]
-	messages.S_file_size("PDF", "without xref", float64(len(byteSlice)), messages.MB)
+	messages.S_file_size("PDF", "without xref", float64(len(byteSlice)))
 	return xref_startIdx, &byteSlice
 }
 
 // return the last object index
 // NOTE: if fail might have to change it to find every single object index
 func Find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, lastObjIdx int) {
-
 	searchEnd := xref_start_idx
 	if searchEnd > len(*byteSlice) {
 		searchEnd = len(*byteSlice)
@@ -118,28 +117,27 @@ func Find_spot_for_new_obj(lastObjIdx, xrefStrtIdx int, file *os.File) int {
 
 // NOTE : create mp3 object to mix
 func create_mp3_obj(appendToIdx, lastObjId int, fileMp3 *os.File) {
-
 }
 
 func Mix_MP3_and_PDF(filePdf, fileMp3 *os.File, appendToIdx, lastObjId int) {
-	fmt.Printf("[PROCESS] Mixing files\n")
-	fileStatPdf, err := filePdf.Stat()
-	if err != nil {
-		messages.E_stat_read(err)
-	}
-	fileStatMp3, err := fileMp3.Stat()
-	if err != nil {
-		messages.E_stat_read(err)
-	}
-	// create buffer for newfile
-	buf := make([]byte, fileStatPdf.Size()+fileStatMp3.Size())
-	bufPdf := make([]byte, fileStatPdf.Size())
-	bufMp3 := make([]byte, fileStatMp3.Size())
-	_, err = filePdf.ReadAt(bufPdf, 0)
-	if err != nil {
-		messages.E_read(err)
-	}
-	// mp3 goes after this
-	pdfFileWindow := bufPdf[0:appendToIdx]
-	create_mp3_obj(appendToIdx, lastObjId, fileMp3)
+	//  fmt.Printf("[PROCESS] Mixing files\n")
+	//  fileStatPdf, err := filePdf.Stat()
+	//  if err != nil {
+	//  	messages.E_stat_read(err)
+	//  }
+	//  fileStatMp3, err := fileMp3.Stat()
+	//  if err != nil {
+	//  	messages.E_stat_read(err)
+	//  }
+	//  // create buffer for newfile
+	//  buf := make([]byte, fileStatPdf.Size()+fileStatMp3.Size())
+	//  bufPdf := make([]byte, fileStatPdf.Size())
+	//  bufMp3 := make([]byte, fileStatMp3.Size())
+	//  _, err = filePdf.ReadAt(bufPdf, 0)
+	//  if err != nil {
+	//  	messages.E_read(err)
+	//  }
+	//  // mp3 goes after this
+	//  pdfFileWindow := bufPdf[0:appendToIdx]
+	//  create_mp3_obj(appendToIdx, lastObjId, fileMp3)
 }
