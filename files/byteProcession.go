@@ -40,8 +40,7 @@ func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
 	}
 	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
 	xrefStartIdx, rawBytes := help.Find_xref(file)
-	endObjIdx, objIdx := help.Find_last_obj_idx(xrefStartIdx, rawBytes)
-	objId = help.Find_obj_id(objIdx, rawBytes)
+	endObjIdx, _ := help.Find_all_obj(xrefStartIdx, rawBytes)
 	appendMp3At = help.Find_spot_for_new_obj(endObjIdx, xrefStartIdx, file)
 
 	pdfCpy, err = os.Open(fileInfo.Name())

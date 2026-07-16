@@ -29,72 +29,112 @@ func Find_xref(f *os.File) (xrefStrtIdx int, bs *[]byte) {
 		messages.E_byte_slice_too_small(xref_startIdx)
 	}
 	messages.S_found_at_index(string(target), xref_startIdx)
+
 	byteSlice := buf[0:xref_startIdx]
 	messages.S_file_size("PDF", "without xref", float64(len(byteSlice)))
 	return xref_startIdx, &byteSlice
 }
 
+type Obj struct {
+	// contain [index]id
+	obj_and_id map[int]int
+	// contain [id]index
+	endobjId map[int]int
+}
+
 // return the last object index
 // NOTE: if fail might have to change it to find every single object index
-func Find_last_obj_idx(xref_start_idx int, byteSlice *[]byte) (lastEndObjIdx, lastObjIdx int) {
+func Find_all_obj(xref_start_idx int, byteSlice *[]byte) (endObjIdx, objIdx int) {
+	var objData *Obj
 	searchEnd := xref_start_idx
 	if searchEnd > len(*byteSlice) {
 		searchEnd = len(*byteSlice)
 	}
 
 	searchZone := (*byteSlice)[0:searchEnd]
+	for {
 
-	lastEndObjIdx = bytes.LastIndex(searchZone, []byte("endobj"))
-	if lastEndObjIdx == -1 {
-		messages.E_index("last endobj")
+		endObjIdx = bytes.Index(searchZone, []byte("endobj"))
+		if endObjIdx == -1 {
+			messages.E_index("obj")
+		}
+		messages.S_found_at_index("endobj", endObjIdx)
+
+		objIdx = bytes.Index(searchZone, []byte("obj"))
+		if objIdx == -1 {
+			messages.E_index("obj")
+		}
+		messages.S_found_at_index("obj", objIdx)
+
+		// find the id and id index
+		line_feedIdx := bytes.Index(searchZone, []byte("\n"))
+		white_spaceIdx := bytes.Index(searchZone, []byte(" "))
+		if line_feedIdx == -1 || white_spaceIdx == -1 {
+			if line_feedIdx == -1 {
+				messages.E_index("line feed")
+			}
+			messages.E_index("white space")
+		}
+		messages.S_found_at_index("line feed", line_feedIdx)
+		messages.S_found_at_index("white space", line_feedIdx)
+
+		find_full_obj_id_string := (*byteSlice)[line_feedIdx:white_spaceIdx]
+		objIdStr := string(bytes.TrimSpace(find_full_obj_id_string))
+		objIdIdx := line_feedIdx + 1
+		id, err := strconv.Atoi(objIdStr)
+		if err != nil {
+			messages.E_strconv_atoi(err)
+		}
+		messages.S_found_id(id)
+		objData.obj_and_id[objIdIdx] = id
+
+		// find endobj very last line feed index
+		endObj_last_index_search_zone := (*byteSlice)[endObjIdx:xref_start_idx]
+		for range 2 {
+			line_feed_FendobjIdx := bytes.Index(endObj_last_index_search_zone, []byte("\n"))
+			if line_feed_FendobjIdx == -1 {
+				break
+			}
+			endObj_last_index_search_zone = endObj_last_index_search_zone[line_feed_FendobjIdx:xref_start_idx]
+		}
+
+		searchZone = searchZone[:]
 	}
-	messages.S_found_at_index("endobj", lastEndObjIdx)
-	searchZone = searchZone[0:lastEndObjIdx]
-	lastObjIdx = bytes.LastIndex(searchZone, []byte("obj"))
-	if lastObjIdx == -1 {
-		messages.E_index("last object")
-	}
-	messages.S_found_at_index(" obj", lastObjIdx)
-	lastObjIdx = lastObjIdx + 1
-	return lastEndObjIdx, lastObjIdx
+	return endObjIdx, objIdx
 }
 
 // NOTE: if fail might have to change it to find every single id
-func Find_obj_id(lastObjIdx int, byteSlice *[]byte) int {
-	searchZone := (*byteSlice)[0:lastObjIdx]
-
-	var line_feed_AfterId, line_feed_BeforeId int
-	lineFeedAsStartIndex := bytes.LastIndex(searchZone, []byte("\n"))
-	messages.S_found_at_index("line feed", lineFeedAsStartIndex)
-	for i := range 3 {
-		whiteSpaceBeforeObjIdx := bytes.LastIndex(searchZone, []byte(" "))
-		if whiteSpaceBeforeObjIdx == -1 {
-			messages.E_index("white space")
-		} else if lineFeedAsStartIndex == -1 {
-			messages.E_index("line feed")
-		}
-		messages.S_found_at_index("white space", whiteSpaceBeforeObjIdx)
-		if i < 2 {
-			line_feed_AfterId = whiteSpaceBeforeObjIdx
-			searchZone = searchZone[0 : line_feed_AfterId-(i+1)]
-		}
-		line_feed_BeforeId = lineFeedAsStartIndex
-	}
-
-	searchZone = searchZone[line_feed_BeforeId:line_feed_AfterId]
-	objIdStr := string(bytes.TrimSpace(searchZone))
-
-	id, err := strconv.Atoi(objIdStr)
-	if err != nil {
-		messages.E_strconv_atoi(err)
-	}
-	messages.S_found_id(id)
-
-	return id
-}
+//  func Find_obj_id(objIdx int, byteSlice *[]byte) int {
+//  	searchZone := (*byteSlice)[0:objIdx]
+//
+//  	var line_feed_AfterId, line_feed_BeforeId int
+//  	for i := range 3 {
+//  		whiteSpaceBeforeObjIdx := bytes.Index(searchZone, []byte(" "))
+//  		if whiteSpaceBeforeObjIdx == -1 {
+//  			messages.E_index("white space")
+//  		}
+//  		messages.S_found_at_index("white space", whiteSpaceBeforeObjIdx)
+//  		if i < 2 {
+//  			line_feed_AfterId = whiteSpaceBeforeObjIdx
+//  			searchZone = searchZone[0 : line_feed_AfterId-(i+1)]
+//  		}
+//  		line_feed_BeforeId = whiteSpaceBeforeObjIdx
+//  	}
+//
+//  	searchZone = searchZone[line_feed_BeforeId:line_feed_AfterId]
+//  	objIdStr := string(bytes.TrimSpace(searchZone))
+//
+//  	id, err := strconv.Atoi(objIdStr)
+//  	if err != nil {
+//  		messages.E_strconv_atoi(err)
+//  	}
+//  	messages.S_found_id(id)
+//
+//  	return id
+//  }
 
 // NOTE: if fails this will also need to change ofcourse
-func Find_spot_for_new_obj(lastObjIdx, xrefStrtIdx int, file *os.File) int {
+func Find_spot_for_new_obj(objIdx, xrefStrtIdx int, file *os.File) int {
 	fileStat, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -105,8 +145,8 @@ func Find_spot_for_new_obj(lastObjIdx, xrefStrtIdx int, file *os.File) int {
 	if err != nil {
 		messages.E_read(err)
 	}
-	findLastLineFeed := buf[lastObjIdx:xrefStrtIdx]
-	appendToIdx := bytes.LastIndex(findLastLineFeed, []byte("\n")) + 1
+	findLastLineFeed := buf[objIdx:xrefStrtIdx]
+	appendToIdx := bytes.Index(findLastLineFeed, []byte("\n")) + 1
 	if appendToIdx == -1 {
 		messages.E_index("line feed")
 	}

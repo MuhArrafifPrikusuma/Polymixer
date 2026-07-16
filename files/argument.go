@@ -1,11 +1,12 @@
 package files
 
 import (
-	"PolyMixer/help"
-	"PolyMixer/messages"
 	"bytes"
 	"log"
 	"os"
+
+	"PolyMixer/help"
+	"PolyMixer/messages"
 )
 
 type Arguments struct {
@@ -23,11 +24,13 @@ func TakeArg(arg *Arguments) {
 	var lastObjId, appendToId int
 	var ptrMp3, ptrPdf *os.File
 	var fileType string
+
 	if len(os.Args) >= 3 {
 		file, err := os.Open(os.Args[1])
 		if err != nil {
 			messages.E_open_file(os.Args[1], err)
 		}
+
 		arg.File1 = file
 		fileType, lastObjId, appendToId, ptrMp3, ptrPdf = getHeader(arg.File1)
 		messages.S_open_file(arg.File1, fileType)
@@ -39,6 +42,7 @@ func TakeArg(arg *Arguments) {
 		}
 		arg.File2 = file
 		fileType, tmplastObjId, tmpappendToId, tmpptrMp3, tmpptrPdf := getHeader(arg.File2)
+
 		if fileType == "PDF" {
 			lastObjId = tmplastObjId
 			appendToId = tmpappendToId
@@ -46,6 +50,7 @@ func TakeArg(arg *Arguments) {
 		} else if fileType == "MP3" {
 			ptrMp3 = tmpptrMp3
 		}
+
 		messages.S_open_file(arg.File2, fileType)
 	}
 	help.Mix_MP3_and_PDF(ptrPdf, ptrMp3, appendToId, lastObjId)
@@ -62,6 +67,7 @@ func getHeader(file *os.File) (strReturn string, lastObjId, appendToId int, ptrM
 		ptrMp3 = mp3_get_body(file)
 		strReturn = "MP3"
 		return strReturn, 0, 0, ptrMp3, nil
+
 	} else if bytes.HasPrefix(buffer, []byte("%PDF")) {
 		lastObjId, appendToId, ptrPdf = Pdf_open(file)
 		strReturn = "PDF"
