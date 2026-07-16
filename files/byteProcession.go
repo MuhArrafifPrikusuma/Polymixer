@@ -1,10 +1,11 @@
 package files
 
 import (
-	"PolyMixer/help"
-	"PolyMixer/messages"
 	"fmt"
 	"os"
+
+	"PolyMixer/help"
+	"PolyMixer/messages"
 )
 
 // basically cut his head we don't need it
@@ -14,7 +15,7 @@ func mp3_get_body(file *os.File) *os.File {
 		messages.E_stat_read(err)
 	}
 	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
-	messages.S_file_size("MP3", "full", float64(fileInfo.Size()), messages.MB)
+	messages.S_file_size("MP3", "full", float64(fileInfo.Size()))
 	buf := make([]byte, fileInfo.Size())
 
 	_, err = file.ReadAt(buf, 0)
@@ -22,7 +23,7 @@ func mp3_get_body(file *os.File) *os.File {
 		messages.E_read(err)
 	}
 	mp3Body := buf[16:]
-	messages.S_file_size("MP3", "headless", float64(len(mp3Body)), messages.MB)
+	messages.S_file_size("MP3", "headless", float64(len(mp3Body)))
 
 	mp3Cpy, err := os.Open(fileInfo.Name())
 	if err != nil {
