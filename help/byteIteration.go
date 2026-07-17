@@ -35,7 +35,7 @@ func Find_xref(f *os.File) (xrefStrtIdx int, bs *[]byte) {
 	return xref_startIdx, &byteSlice
 }
 
-type Obj struct {
+type ObjMap struct {
 	// contain [index]id
 	obj_and_id map[int]int
 	// contain [id]index
@@ -45,7 +45,6 @@ type Obj struct {
 // return the last object index
 // NOTE: if fail might have to change it to find every single object index
 func Find_all_obj(xref_start_idx int, byteSlice *[]byte) (endObjIdx, objIdx int) {
-	var objData *Obj
 	searchEnd := xref_start_idx
 	if searchEnd > len(*byteSlice) {
 		searchEnd = len(*byteSlice)
@@ -55,6 +54,7 @@ func Find_all_obj(xref_start_idx int, byteSlice *[]byte) (endObjIdx, objIdx int)
 	for {
 
 		endObjIdx = bytes.Index(searchZone, []byte("endobj"))
+		endObjIdx += 7
 		if endObjIdx == -1 {
 			messages.E_index("obj")
 		}
@@ -78,27 +78,25 @@ func Find_all_obj(xref_start_idx int, byteSlice *[]byte) (endObjIdx, objIdx int)
 		messages.S_found_at_index("line feed", line_feedIdx)
 		messages.S_found_at_index("white space", line_feedIdx)
 
+		// FIXME: this currently read the first newline not the one right before
+		// the object id so find a way to fix that
 		find_full_obj_id_string := (*byteSlice)[line_feedIdx:white_spaceIdx]
 		objIdStr := string(bytes.TrimSpace(find_full_obj_id_string))
-		objIdIdx := line_feedIdx + 1
+		objIdIdx := int(line_feedIdx + 1)
 		id, err := strconv.Atoi(objIdStr)
 		if err != nil {
 			messages.E_strconv_atoi(err)
 		}
 		messages.S_found_id(id)
-		objData.obj_and_id[objIdIdx] = id
 
-		// find endobj very last line feed index
-		endObj_last_index_search_zone := (*byteSlice)[endObjIdx:xref_start_idx]
-		for range 2 {
-			line_feed_FendobjIdx := bytes.Index(endObj_last_index_search_zone, []byte("\n"))
-			if line_feed_FendobjIdx == -1 {
-				break
-			}
-			endObj_last_index_search_zone = endObj_last_index_search_zone[line_feed_FendobjIdx:xref_start_idx]
+		objMap := ObjMap{
+			obj_and_id: make(map[int]int),
+			endobjId:   make(map[int]int),
 		}
+		objMap.obj_and_id[objIdIdx] = id
+		objMap.endobjId[id] = endObjIdx
 
-		searchZone = searchZone[:]
+		searchZone = searchZone[:xref_start_idx]
 	}
 	return endObjIdx, objIdx
 }
