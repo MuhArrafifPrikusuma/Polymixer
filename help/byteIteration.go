@@ -2,6 +2,7 @@ package help
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -44,31 +45,33 @@ type ObjMap struct {
 
 // return the last object index
 // NOTE: if fail might have to change it to find every single object index
-func Find_all_obj(xref_start_idx int, byteSlice *[]byte) (endObjIdx, objIdx int) {
-	searchEnd := xref_start_idx
-	if searchEnd > len(*byteSlice) {
-		searchEnd = len(*byteSlice)
-	}
+func Find_all_obj(byteSlice *[]byte) (endObjIdx, objIdx int) {
+	searchStart := 0
 
-	searchZone := (*byteSlice)[0:searchEnd]
+	searchZone := (*byteSlice)[searchStart:]
+	// FIXME: find a way to make so that it still uses the size of searchZone for accuracy while able to
+	// somehow move and slice forward without removing the actual searchZone slice so that the size remain
+	// accurate while also working and why tf does it jumps from offset 27** to 14*** in the third loop
 	for {
 
-		endObjIdx = bytes.Index(searchZone, []byte("endobj"))
-		endObjIdx += 7
+		fmt.Println("search start from", searchStart)
+		endObjIdx = bytes.Index(searchZone, []byte("endobj")) + searchStart
 		if endObjIdx == -1 {
 			messages.E_index("obj")
 		}
 		messages.S_found_at_index("endobj", endObjIdx)
 
-		objIdx = bytes.Index(searchZone, []byte("obj"))
+		objIdx = bytes.Index(searchZone, []byte("obj")) + searchStart
 		if objIdx == -1 {
 			messages.E_index("obj")
 		}
 		messages.S_found_at_index("obj", objIdx)
 
 		// find the id and id index
-		line_feedIdx := bytes.Index(searchZone, []byte("\n"))
-		white_spaceIdx := bytes.Index(searchZone, []byte(" "))
+		white_spaceIdx := bytes.Index(searchZone, []byte(" ")) + searchStart
+		current_lineFeedStartZoneIdx := searchStart
+		search_zone_for_linefeedIdx := (*byteSlice)[current_lineFeedStartZoneIdx:white_spaceIdx]
+		line_feedIdx := bytes.LastIndex(search_zone_for_linefeedIdx, []byte("\n")) + searchStart
 		if line_feedIdx == -1 || white_spaceIdx == -1 {
 			if line_feedIdx == -1 {
 				messages.E_index("line feed")
@@ -78,25 +81,29 @@ func Find_all_obj(xref_start_idx int, byteSlice *[]byte) (endObjIdx, objIdx int)
 		messages.S_found_at_index("line feed", line_feedIdx)
 		messages.S_found_at_index("white space", line_feedIdx)
 
-		// FIXME: this currently read the first newline not the one right before
-		// the object id so find a way to fix that
 		find_full_obj_id_string := (*byteSlice)[line_feedIdx:white_spaceIdx]
 		objIdStr := string(bytes.TrimSpace(find_full_obj_id_string))
-		objIdIdx := int(line_feedIdx + 1)
+		objIdIdx := line_feedIdx
 		id, err := strconv.Atoi(objIdStr)
 		if err != nil {
 			messages.E_strconv_atoi(err)
 		}
 		messages.S_found_id(id)
 
-		objMap := ObjMap{
+		objMap := &ObjMap{
 			obj_and_id: make(map[int]int),
 			endobjId:   make(map[int]int),
 		}
 		objMap.obj_and_id[objIdIdx] = id
 		objMap.endobjId[id] = endObjIdx
+		prev_searchStart := 0
+		searchStart = endObjIdx - prev_searchStart
+		prev_searchStart = searchStart
 
-		searchZone = searchZone[:xref_start_idx]
+		searchZone = searchZone[searchStart:]
+
+		searchIdx_LastLineFeedAfter_endobj := bytes.Index(searchZone, []byte("\n"))
+		current_lineFeedStartZoneIdx = searchIdx_LastLineFeedAfter_endobj
 	}
 	return endObjIdx, objIdx
 }
