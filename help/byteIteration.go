@@ -11,7 +11,7 @@ import (
 )
 
 // NOTE: if fail this is no longer needed
-func Find_xref(f *os.File) (xrefStrtIdx int, bs *[]byte) {
+func Find_xref(f *os.File) (bs *[]byte) {
 	fileStat, err := f.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -33,7 +33,7 @@ func Find_xref(f *os.File) (xrefStrtIdx int, bs *[]byte) {
 
 	byteSlice := buf[0:xref_startIdx]
 	messages.S_file_size("PDF", "without xref", float64(len(byteSlice)))
-	return xref_startIdx, &byteSlice
+	return &byteSlice
 }
 
 type ObjMap struct {
@@ -45,10 +45,14 @@ type ObjMap struct {
 
 // return the last object index
 // NOTE: if fail might have to change it to find every single object index
-func Find_all_obj(byteSlice *[]byte) (endObjIdx, objIdx int) {
+func Find_all_obj(byteSlice *[]byte) *ObjMap {
 	searchStart := 0
-
+	var endObjIdx, objIdx int
 	searchZone := (*byteSlice)[searchStart:]
+	objMap := &ObjMap{
+		obj_and_id: make(map[int]int),
+		endobjId:   make(map[int]int),
+	}
 	// FIXME: find a way to make so that it still uses the size of searchZone for accuracy while able to
 	// somehow move and slice forward without removing the actual searchZone slice so that the size remain
 	// accurate while also working and why tf does it jumps from offset 27** to 14*** in the third loop
@@ -56,6 +60,7 @@ func Find_all_obj(byteSlice *[]byte) (endObjIdx, objIdx int) {
 
 		fmt.Println("search start from", searchStart)
 		endObjIdx = bytes.Index(searchZone, []byte("endobj")) + searchStart
+		endObjIdx += 1
 		if endObjIdx == -1 {
 			messages.E_index("obj")
 		}
@@ -90,10 +95,6 @@ func Find_all_obj(byteSlice *[]byte) (endObjIdx, objIdx int) {
 		}
 		messages.S_found_id(id)
 
-		objMap := &ObjMap{
-			obj_and_id: make(map[int]int),
-			endobjId:   make(map[int]int),
-		}
 		objMap.obj_and_id[objIdIdx] = id
 		objMap.endobjId[id] = endObjIdx
 		prev_searchStart := 0
@@ -105,7 +106,7 @@ func Find_all_obj(byteSlice *[]byte) (endObjIdx, objIdx int) {
 		searchIdx_LastLineFeedAfter_endobj := bytes.Index(searchZone, []byte("\n"))
 		current_lineFeedStartZoneIdx = searchIdx_LastLineFeedAfter_endobj
 	}
-	return endObjIdx, objIdx
+	return objMap
 }
 
 // NOTE: if fail might have to change it to find every single id
@@ -138,8 +139,9 @@ func Find_all_obj(byteSlice *[]byte) (endObjIdx, objIdx int) {
 //  	return id
 //  }
 
-// NOTE: if fails this will also need to change ofcourse
-func Find_spot_for_new_obj(objIdx, xrefStrtIdx int, file *os.File) int {
+// NOTE: Save for later when find all object is fixed
+
+func Find_spot_for_new_obj(objMapData *ObjMap, file *os.File) int {
 	fileStat, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -150,7 +152,9 @@ func Find_spot_for_new_obj(objIdx, xrefStrtIdx int, file *os.File) int {
 	if err != nil {
 		messages.E_read(err)
 	}
-	findLastLineFeed := buf[objIdx:xrefStrtIdx]
+	// temporary data
+	findLastLineFeed := buf[0:]
+	// this is the actual one but need change -> buf[objidx:xrefstrtidx]
 	appendToIdx := bytes.Index(findLastLineFeed, []byte("\n")) + 1
 	if appendToIdx == -1 {
 		messages.E_index("line feed")
