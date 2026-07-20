@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"PolyMixer/help"
 	"PolyMixer/messages"
 )
 
@@ -32,16 +31,27 @@ func mp3_get_body(file *os.File) *os.File {
 	return mp3Cpy
 }
 
+type ObjMap struct {
+	// contain [index]id
+	obj_and_id map[int]int
+	// contain [id]index
+	endobjId map[int]int
+}
+
 // NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
 func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
+	objMap := &ObjMap{
+		obj_and_id: make(map[int]int),
+		endobjId:   make(map[int]int),
+	}
 	fileInfo, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
 	}
 	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
-	rawBytes := help.Find_xref(file)
-	objMapData := help.Find_all_obj(rawBytes)
-	appendMp3At = help.Find_spot_for_new_obj(objMapData, file)
+	rawBytes := Find_xref(file)
+	Find_all_obj(rawBytes, objMap)
+	appendMp3At = Find_spot_for_new_obj(objMap, file)
 
 	pdfCpy, err = os.Open(fileInfo.Name())
 	if err != nil {

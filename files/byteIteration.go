@@ -1,4 +1,4 @@
-package help
+package files
 
 import (
 	"bytes"
@@ -36,77 +36,66 @@ func Find_xref(f *os.File) (bs *[]byte) {
 	return &byteSlice
 }
 
-type ObjMap struct {
-	// contain [index]id
-	obj_and_id map[int]int
-	// contain [id]index
-	endobjId map[int]int
-}
-
 // return the last object index
 // NOTE: if fail might have to change it to find every single object index
-func Find_all_obj(byteSlice *[]byte) *ObjMap {
+func Find_all_obj(byteSlice *[]byte, objMap *ObjMap) {
+	fullData := *byteSlice
 	searchStart := 0
-	var endObjIdx, objIdx int
-	searchZone := (*byteSlice)[searchStart:]
-	objMap := &ObjMap{
-		obj_and_id: make(map[int]int),
-		endobjId:   make(map[int]int),
-	}
-	// FIXME: find a way to make so that it still uses the size of searchZone for accuracy while able to
-	// somehow move and slice forward without removing the actual searchZone slice so that the size remain
-	// accurate while also working and why tf does it jumps from offset 27** to 14*** in the third loop
+
 	for {
-
+		if searchStart >= len(fullData) {
+			break
+		}
+		currentZone := fullData[searchStart:]
 		fmt.Println("search start from", searchStart)
-		endObjIdx = bytes.Index(searchZone, []byte("endobj")) + searchStart
-		endObjIdx += 1
-		if endObjIdx == -1 {
-			messages.E_index("obj")
-		}
-		messages.S_found_at_index("endobj", endObjIdx)
 
-		objIdx = bytes.Index(searchZone, []byte("obj")) + searchStart
-		if objIdx == -1 {
+		// get Object starting Index
+		relative_ObjIdx := bytes.Index(currentZone, []byte("obj"))
+		if relative_ObjIdx == -1 {
+			if searchStart != 0 {
+				fmt.Println("[TEMPORARY] either all objects found or corrupted file or just my stupid code breaks")
+				break
+			}
 			messages.E_index("obj")
 		}
+		objIdx := searchStart + relative_ObjIdx
 		messages.S_found_at_index("obj", objIdx)
 
-		// find the id and id index
-		white_spaceIdx := bytes.Index(searchZone, []byte(" ")) + searchStart
-		current_lineFeedStartZoneIdx := searchStart
-		search_zone_for_linefeedIdx := (*byteSlice)[current_lineFeedStartZoneIdx:white_spaceIdx]
-		line_feedIdx := bytes.LastIndex(search_zone_for_linefeedIdx, []byte("\n")) + searchStart
-		if line_feedIdx == -1 || white_spaceIdx == -1 {
-			if line_feedIdx == -1 {
-				messages.E_index("line feed")
-			}
-			messages.E_index("white space")
+		// get endobj starting index
+		relative_EndObjIdx := bytes.Index(currentZone[relative_ObjIdx:], []byte("endobj"))
+		if relative_EndObjIdx == -1 {
+			messages.E_index("endobj")
 		}
-		messages.S_found_at_index("line feed", line_feedIdx)
-		messages.S_found_at_index("white space", line_feedIdx)
+		endObjIdx := searchStart + relative_EndObjIdx + relative_ObjIdx
+		messages.S_found_at_index("endobj", endObjIdx)
 
-		find_full_obj_id_string := (*byteSlice)[line_feedIdx:white_spaceIdx]
-		objIdStr := string(bytes.TrimSpace(find_full_obj_id_string))
-		objIdIdx := line_feedIdx
-		id, err := strconv.Atoi(objIdStr)
+		// get ID from current obj in scope
+		searchZone_ID := fullData[:objIdx]
+		lineFeedIdx := bytes.LastIndex(searchZone_ID, []byte("\n"))
+		if lineFeedIdx == -1 {
+			messages.E_index("line feed")
+		}
+		messages.S_found_at_index("line feed", lineFeedIdx)
+
+		objID_searchArea := fullData[lineFeedIdx:objIdx]
+		idFields := bytes.Fields(objID_searchArea)
+		if idFields == nil {
+			fmt.Println("[ERROR] TEMPORARY PLACEHOLDER")
+		}
+		messages.S_found_in_field(idFields)
+
+		id, err := strconv.Atoi(string(idFields[0]))
 		if err != nil {
 			messages.E_strconv_atoi(err)
 		}
 		messages.S_found_id(id)
 
-		objMap.obj_and_id[objIdIdx] = id
-		objMap.endobjId[id] = endObjIdx
-		prev_searchStart := 0
-		searchStart = endObjIdx - prev_searchStart
-		prev_searchStart = searchStart
+		objMap.obj_and_id[objIdx] = id
+		// +6 so that it doesn't find the end'obj' <- from here
+		objMap.endobjId[id] = endObjIdx + 6
 
-		searchZone = searchZone[searchStart:]
-
-		searchIdx_LastLineFeedAfter_endobj := bytes.Index(searchZone, []byte("\n"))
-		current_lineFeedStartZoneIdx = searchIdx_LastLineFeedAfter_endobj
+		searchStart = endObjIdx + 6
 	}
-	return objMap
 }
 
 // NOTE: if fail might have to change it to find every single id

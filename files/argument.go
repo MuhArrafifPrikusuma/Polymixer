@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"PolyMixer/help"
 	"PolyMixer/messages"
 )
 
@@ -53,7 +52,7 @@ func TakeArg(arg *Arguments) {
 
 		messages.S_open_file(arg.File2, fileType)
 	}
-	help.Mix_MP3_and_PDF(ptrPdf, ptrMp3, appendToId, lastObjId)
+	Mix_MP3_and_PDF(ptrPdf, ptrMp3, appendToId, lastObjId)
 }
 
 func getHeader(file *os.File) (strReturn string, lastObjId, appendToId int, ptrMp3, ptrPdf *os.File) {
