@@ -31,7 +31,7 @@ func mp3_get_body(file *os.File) *os.File {
 	return mp3Cpy
 }
 
-type ObjMap struct {
+type ObjMap_t struct {
 	// contain [index]id
 	obj_and_id map[int]int
 	// contain [id]index
@@ -40,7 +40,7 @@ type ObjMap struct {
 
 // NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
 func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
-	objMap := &ObjMap{
+	objMap := &ObjMap_t{
 		obj_and_id: make(map[int]int),
 		endobjId:   make(map[int]int),
 	}
@@ -51,7 +51,7 @@ func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
 	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
 	byteSlice_toXref, byteSlice_fromXref := Find_xref(file)
 	Find_all_obj(byteSlice_toXref, objMap)
-	Find_cross_reference_byID(byteSlice_fromXref)
+	Find_cross_reference_byID(byteSlice_fromXref, objMap)
 	appendMp3At = Find_spot_for_new_obj(objMap, file)
 
 	pdfCpy, err = os.Open(fileInfo.Name())
