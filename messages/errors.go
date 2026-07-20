@@ -25,3 +25,7 @@ func E_byte_slice_too_small(size int) {
 func E_strconv_atoi(err error) {
 	log.Fatal("[ERROR]", err)
 }
+
+func E_cannot_find_fields(field [][]byte) {
+	log.Fatalf("[ERROR]Cannot find any fields in current slice")
+}

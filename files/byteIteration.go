@@ -10,8 +10,7 @@ import (
 	"PolyMixer/messages"
 )
 
-// NOTE: if fail this is no longer needed
-func Find_xref(f *os.File) (bs *[]byte) {
+func Find_xref(f *os.File) (bs, bsfXref *[]byte) {
 	fileStat, err := f.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -31,13 +30,13 @@ func Find_xref(f *os.File) (bs *[]byte) {
 	}
 	messages.S_found_at_index(string(target), xref_startIdx)
 
-	byteSlice := buf[0:xref_startIdx]
-	messages.S_file_size("PDF", "without xref", float64(len(byteSlice)))
-	return &byteSlice
+	from_start_to_xref := buf[:xref_startIdx]
+	fromXref_to_end := buf[xref_startIdx:]
+	messages.S_file_size("PDF", "without xref", float64(len(from_start_to_xref)))
+	return &from_start_to_xref, &fromXref_to_end
 }
 
 // return the last object index
-// NOTE: if fail might have to change it to find every single object index
 func Find_all_obj(byteSlice *[]byte, objMap *ObjMap) {
 	fullData := *byteSlice
 	searchStart := 0
@@ -53,7 +52,7 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap) {
 		relative_ObjIdx := bytes.Index(currentZone, []byte("obj"))
 		if relative_ObjIdx == -1 {
 			if searchStart != 0 {
-				fmt.Println("[TEMPORARY] either all objects found or corrupted file or just my stupid code breaks")
+				fmt.Println("[PROCESS END]All objects found")
 				break
 			}
 			messages.E_index("obj")
@@ -69,7 +68,7 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap) {
 		endObjIdx := searchStart + relative_EndObjIdx + relative_ObjIdx
 		messages.S_found_at_index("endobj", endObjIdx)
 
-		// get ID from current obj in scope
+		// get ID from obj in current scope
 		searchZone_ID := fullData[:objIdx]
 		lineFeedIdx := bytes.LastIndex(searchZone_ID, []byte("\n"))
 		if lineFeedIdx == -1 {
@@ -80,7 +79,7 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap) {
 		objID_searchArea := fullData[lineFeedIdx:objIdx]
 		idFields := bytes.Fields(objID_searchArea)
 		if idFields == nil {
-			fmt.Println("[ERROR] TEMPORARY PLACEHOLDER")
+			messages.E_cannot_find_fields(idFields)
 		}
 		messages.S_found_in_field(idFields)
 
@@ -96,6 +95,9 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap) {
 
 		searchStart = endObjIdx + 6
 	}
+}
+
+func Find_cross_reference_byID(bsfXref *[]byte) {
 }
 
 // NOTE: if fail might have to change it to find every single id
