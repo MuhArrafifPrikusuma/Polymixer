@@ -30,5 +30,11 @@ func S_found_at_index(target string, idx int) {
 }
 
 func S_found_id(id int) {
-	fmt.Printf("[SUCCESS]Found last obj id: %v\n", id)
+	fmt.Printf("[SUCCESS]Found obj id: %v\n", id)
+}
+
+func S_found_in_field(field [][]byte) {
+	for i := range len(field) {
+		fmt.Printf("[SUCCESS]Found %s in fields\n", field[i])
+	}
 }
