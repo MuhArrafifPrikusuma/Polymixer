@@ -37,7 +37,7 @@ func Find_xref(f *os.File) (bs, bsfXref *[]byte) {
 }
 
 // return the last object index
-func Find_all_obj(byteSlice *[]byte, objMap *ObjMap) {
+func Find_all_obj(byteSlice *[]byte, objMap *ObjMap_t) {
 	fullData := *byteSlice
 	searchStart := 0
 
@@ -90,14 +90,23 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap) {
 		messages.S_found_id(id)
 
 		objMap.obj_and_id[objIdx] = id
-		// +6 so that it doesn't find the end'obj' <- from here
+		// +6 so that it doesn't find 'obj' end'obj' <- from here
 		objMap.endobjId[id] = endObjIdx + 6
 
 		searchStart = endObjIdx + 6
 	}
 }
 
-func Find_cross_reference_byID(bsfXref *[]byte) {
+// NOTE: definitely still needs alot of reading the pdf cross reference table documentation
+func Find_cross_reference_byID(bsfXref *[]byte, objMap *ObjMap_t) {
+	type xref_ObjMap struct {
+		xref_boffset map[int]*ObjMap_t
+	}
+
+	// fulldata := *bsfXref
+
+	for {
+	}
 }
 
 // NOTE: if fail might have to change it to find every single id
@@ -132,7 +141,7 @@ func Find_cross_reference_byID(bsfXref *[]byte) {
 
 // NOTE: Save for later when find all object is fixed
 
-func Find_spot_for_new_obj(objMapData *ObjMap, file *os.File) int {
+func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 	fileStat, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
