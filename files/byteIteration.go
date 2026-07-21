@@ -10,6 +10,16 @@ import (
 	"PolyMixer/messages"
 )
 
+/* NOTE:
+objects ID is actually not in order so i can just take the very last object ID then increment by one to create
+new object with that id which will be placed in the very first slot after the header and fill it with mp3.
+after that i need to recalculate all byte offset by running find_all_obj again and i need to find all new objects
+byte offset and after that i will then need to make a function to trackdown each of this object id and which
+index they are in before the mp3 append to determine which reference table should be modified later on.
+and i will need to rerun that function after append to finally find the new byte offset of all object and replace
+the old reference table with new one
+*/
+
 func Find_xref(f *os.File) (bs, bsfXref *[]byte) {
 	fileStat, err := f.Stat()
 	if err != nil {
@@ -83,13 +93,19 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap_t) {
 		}
 		messages.S_found_in_field(idFields)
 
+		ffieldIndex := lineFeedIdx + bytes.Index(objID_searchArea, idFields[0])
+		if ffieldIndex == -1 {
+			messages.E_index("index of ID")
+		}
+		messages.S_found_at_index("ID", ffieldIndex)
+
 		id, err := strconv.Atoi(string(idFields[0]))
 		if err != nil {
 			messages.E_strconv_atoi(err)
 		}
 		messages.S_found_id(id)
 
-		objMap.obj_and_id[objIdx] = id
+		objMap.objIdx_and_ID[id] = ffieldIndex
 		// +6 so that it doesn't find 'obj' end'obj' <- from here
 		objMap.endobjId[id] = endObjIdx + 6
 
@@ -104,6 +120,10 @@ type Xref_ObjMap_t struct {
 // NOTE: definitely still needs alot of reading the pdf cross reference table documentation
 func Find_cross_reference_byID(bsfXref *[]byte, objMap *ObjMap_t) {
 	// fulldata := *bsfXref
+	// xref_objmapping := Xref_ObjMap_t{
+	// 	xref_boffset: make(map[int]*ObjMap_t),
+	// }
+	// i := 0
 }
 
 // NOTE: Save for later when find all object is fixed
@@ -126,7 +146,7 @@ func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 	if appendToIdx == -1 {
 		messages.E_index("line feed")
 	}
-	messages.S_found_at_index("line feed", appendToIdx)
+	messages.S_found_at_index("found spot to append at", appendToIdx)
 
 	return appendToIdx
 }
