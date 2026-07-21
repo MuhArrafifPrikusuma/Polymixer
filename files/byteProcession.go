@@ -32,17 +32,17 @@ func mp3_get_body(file *os.File) *os.File {
 }
 
 type ObjMap_t struct {
-	// contain [index]id
-	obj_and_id map[int]int
-	// contain [id]index
+	// contain [ID]index of ID
+	objIdx_and_ID map[int]int
+	// contain [ID]index of endobj
 	endobjId map[int]int
 }
 
 // NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
 func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
 	objMap := &ObjMap_t{
-		obj_and_id: make(map[int]int),
-		endobjId:   make(map[int]int),
+		objIdx_and_ID: make(map[int]int),
+		endobjId:      make(map[int]int),
 	}
 	fileInfo, err := file.Stat()
 	if err != nil {

@@ -83,13 +83,19 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap_t) {
 		}
 		messages.S_found_in_field(idFields)
 
+		ffieldIndex := lineFeedIdx + bytes.Index(objID_searchArea, idFields[0])
+		if ffieldIndex == -1 {
+			messages.E_index("index of ID")
+		}
+		messages.S_found_at_index("ID", ffieldIndex)
+
 		id, err := strconv.Atoi(string(idFields[0]))
 		if err != nil {
 			messages.E_strconv_atoi(err)
 		}
 		messages.S_found_id(id)
 
-		objMap.obj_and_id[objIdx] = id
+		objMap.objIdx_and_ID[id] = ffieldIndex
 		// +6 so that it doesn't find 'obj' end'obj' <- from here
 		objMap.endobjId[id] = endObjIdx + 6
 
@@ -104,6 +110,10 @@ type Xref_ObjMap_t struct {
 // NOTE: definitely still needs alot of reading the pdf cross reference table documentation
 func Find_cross_reference_byID(bsfXref *[]byte, objMap *ObjMap_t) {
 	// fulldata := *bsfXref
+	// xref_objmapping := Xref_ObjMap_t{
+	// 	xref_boffset: make(map[int]*ObjMap_t),
+	// }
+	// i := 0
 }
 
 // NOTE: Save for later when find all object is fixed
