@@ -20,7 +20,7 @@ and i will need to rerun that function after append to finally find the new byte
 the old reference table with new one
 */
 
-func Find_xref(f *os.File) (bs, bsfXref *[]byte) {
+func Find_xref(f *os.File) (bs, bsfXref *[]byte, xref_start int) {
 	fileStat, err := f.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -43,7 +43,7 @@ func Find_xref(f *os.File) (bs, bsfXref *[]byte) {
 	from_start_to_xref := buf[:xref_startIdx]
 	fromXref_to_end := buf[xref_startIdx:]
 	messages.S_file_size("PDF", "without xref", float64(len(from_start_to_xref)))
-	return &from_start_to_xref, &fromXref_to_end
+	return &from_start_to_xref, &fromXref_to_end, xref_startIdx
 }
 
 // return the last object index
@@ -117,13 +117,36 @@ type Xref_ObjMap_t struct {
 	xref_boffset map[int]*ObjMap_t
 }
 
-// NOTE: definitely still needs alot of reading the pdf cross reference table documentation
-func Find_cross_reference_byID(bsfXref *[]byte, objMap *ObjMap_t) {
-	// fulldata := *bsfXref
+// NOTE: First i need to create a function to detect all required data (starting point and amount of objects)
+// before finally going to iterate through actual ID byte offset tables
+// we can do that by looking at the largest index + 1 == amount of objects
+func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
+	fmt.Printf("[PROCESS START]Find ID reference\n")
+	fulldata := *bsfXref
 	// xref_objmapping := Xref_ObjMap_t{
 	// 	xref_boffset: make(map[int]*ObjMap_t),
 	// }
-	// i := 0
+
+	// FIX: save all of this for later use
+	target := []byte("\n")
+	rltv_firstlf_inTable := bytes.Index(fulldata, target)
+	abs_firstlf_inTable := rltv_firstlf_inTable + bsXref_startp
+	if rltv_firstlf_inTable == -1 {
+		messages.E_index("what file is this bruh")
+	}
+	messages.S_found_at_index("line feed", abs_firstlf_inTable)
+
+	// use this to find next lf
+	tmpScope := fulldata[rltv_firstlf_inTable+1:]
+	lastlf_inTable := bytes.Index(tmpScope, target)
+	for {
+		currentScope := fulldata[rltv_firstlf_inTable:lastlf_inTable]
+		table_fields := bytes.Fields(currentScope)
+		if table_fields == nil {
+			messages.E_cannot_find_fields(table_fields)
+		}
+		messages.S_found_in_field(table_fields)
+	}
 }
 
 // NOTE: Save for later when find all object is fixed
