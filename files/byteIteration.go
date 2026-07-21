@@ -97,47 +97,14 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap_t) {
 	}
 }
 
-// NOTE: definitely still needs alot of reading the pdf cross reference table documentation
-func Find_cross_reference_byID(bsfXref *[]byte, objMap *ObjMap_t) {
-	type xref_ObjMap struct {
-		xref_boffset map[int]*ObjMap_t
-	}
-
-	// fulldata := *bsfXref
-
-	for {
-	}
+type Xref_ObjMap_t struct {
+	xref_boffset map[int]*ObjMap_t
 }
 
-// NOTE: if fail might have to change it to find every single id
-//  func Find_obj_id(objIdx int, byteSlice *[]byte) int {
-//  	searchZone := (*byteSlice)[0:objIdx]
-//
-//  	var line_feed_AfterId, line_feed_BeforeId int
-//  	for i := range 3 {
-//  		whiteSpaceBeforeObjIdx := bytes.Index(searchZone, []byte(" "))
-//  		if whiteSpaceBeforeObjIdx == -1 {
-//  			messages.E_index("white space")
-//  		}
-//  		messages.S_found_at_index("white space", whiteSpaceBeforeObjIdx)
-//  		if i < 2 {
-//  			line_feed_AfterId = whiteSpaceBeforeObjIdx
-//  			searchZone = searchZone[0 : line_feed_AfterId-(i+1)]
-//  		}
-//  		line_feed_BeforeId = whiteSpaceBeforeObjIdx
-//  	}
-//
-//  	searchZone = searchZone[line_feed_BeforeId:line_feed_AfterId]
-//  	objIdStr := string(bytes.TrimSpace(searchZone))
-//
-//  	id, err := strconv.Atoi(objIdStr)
-//  	if err != nil {
-//  		messages.E_strconv_atoi(err)
-//  	}
-//  	messages.S_found_id(id)
-//
-//  	return id
-//  }
+// NOTE: definitely still needs alot of reading the pdf cross reference table documentation
+func Find_cross_reference_byID(bsfXref *[]byte, objMap *ObjMap_t) {
+	// fulldata := *bsfXref
+}
 
 // NOTE: Save for later when find all object is fixed
 
