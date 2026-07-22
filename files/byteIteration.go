@@ -117,8 +117,9 @@ type Xref_ObjMap_t struct {
 	xref_boffset map[int]*ObjMap_t
 }
 
-// read starting and endpoint
-func read_xref_data(bsfXref *[]byte, startIdx int) (startP, numOIdx, lastlf int) {
+// consume byte slice slice -> starting point of the reference table and
+// number of index, last line feed (relative index) <- add with bsXref_startingpoint to turn into abs
+func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 	fulldata := *bsfXref
 	target := []byte("\n")
 	firstlf := bytes.Index(fulldata, target)
@@ -128,17 +129,15 @@ func read_xref_data(bsfXref *[]byte, startIdx int) (startP, numOIdx, lastlf int)
 		messages.E_index("line feed")
 	}
 	fmt.Println("[PROCESS]Looking objects info")
-	messages.S_found_at_index("line feed", firstlf+startIdx)
-	messages.S_found_at_index("line feed", lastlf+startIdx+firstlf)
+	lastlf += firstlf + 1
 
 	lookFor_Fields := fulldata[firstlf:lastlf]
 	fields := bytes.Fields(lookFor_Fields)
 	if fields == nil {
 		messages.E_cannot_find_fields(fields)
 	}
-	messages.S_found_in_field(fields)
 
-	sprt_field := make([]int, 0)
+	sprt_field := make([]int, 2)
 	for i := range fields {
 		split_field, err := strconv.Atoi(string(fields[i]))
 		if err != nil {
@@ -149,17 +148,19 @@ func read_xref_data(bsfXref *[]byte, startIdx int) (startP, numOIdx, lastlf int)
 	return sprt_field[0], sprt_field[1], lastlf
 }
 
-// NOTE: First i need to create a function to detect all required data (starting point and amount of objects)
-// before finally going to iterate through actual ID byte offset tables
-// we can do that by looking at the largest index + 1 == amount of objects
 func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 	fmt.Printf("[PROCESS START]Find ID reference\n")
 	// xref_objmapping := Xref_ObjMap_t{
 	// 	xref_boffset: make(map[int]*ObjMap_t),
 	// }
 
-	_, _, startP := read_xref_data(bsfXref, bsXref_startp)
+	refStart, numsO, startP := read_xref_data(bsfXref)
+	messages.S_found_xref_data(refStart, numsO, startP, bsXref_startp)
+
 	fulldata := (*bsfXref)[startP:]
+	// NOTE: this should also get the relative index of all fields and convert them to number and store
+	// them in a hash with that looks like -> map[reference ID]relative index and after append that's when we
+	// combined xref with body and then give xref the absolute indexes
 	for {
 		table_fields := bytes.Fields(fulldata)
 		if table_fields == nil {
@@ -189,7 +190,7 @@ func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 	if appendToIdx == -1 {
 		messages.E_index("line feed")
 	}
-	messages.S_found_at_index("found spot to append at", appendToIdx)
+	messages.S_found_at_index("spot to append at", appendToIdx)
 
 	return appendToIdx
 }
