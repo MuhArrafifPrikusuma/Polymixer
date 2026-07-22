@@ -8,8 +8,6 @@ import (
 	"strconv"
 
 	"PolyMixer/messages"
-
-	"golang.org/x/text/unicode/rangetable"
 )
 
 /* NOTE:
@@ -119,17 +117,19 @@ type Xref_ObjMap_t struct {
 	xref_boffset map[int]*ObjMap_t
 }
 
-func read_xref_data(bsfXref *[]byte) (startP, numOIdx int) {
+// read starting and endpoint
+func read_xref_data(bsfXref *[]byte, startIdx int) (startP, numOIdx, lastlf int) {
 	fulldata := *bsfXref
 	target := []byte("\n")
 	firstlf := bytes.Index(fulldata, target)
 	nextlf := fulldata[firstlf+1:]
-	lastlf := bytes.Index(nextlf, target)
+	lastlf = bytes.Index(nextlf, target)
 	if firstlf == -1 || lastlf == -1 {
 		messages.E_index("line feed")
 	}
-	messages.S_found_at_index("line feed", firstlf)
-	messages.S_found_at_index("line feed", lastlf)
+	fmt.Println("[PROCESS]Looking objects info")
+	messages.S_found_at_index("line feed", firstlf+startIdx)
+	messages.S_found_at_index("line feed", lastlf+startIdx+firstlf)
 
 	lookFor_Fields := fulldata[firstlf:lastlf]
 	fields := bytes.Fields(lookFor_Fields)
@@ -138,7 +138,7 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx int) {
 	}
 	messages.S_found_in_field(fields)
 
-	var sprt_field []int
+	sprt_field := make([]int, 0)
 	for i := range fields {
 		split_field, err := strconv.Atoi(string(fields[i]))
 		if err != nil {
@@ -146,7 +146,7 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx int) {
 		}
 		sprt_field[i] = split_field
 	}
-	return sprt_field[0], sprt_field[1]
+	return sprt_field[0], sprt_field[1], lastlf
 }
 
 // NOTE: First i need to create a function to detect all required data (starting point and amount of objects)
@@ -154,31 +154,19 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx int) {
 // we can do that by looking at the largest index + 1 == amount of objects
 func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 	fmt.Printf("[PROCESS START]Find ID reference\n")
-	// fulldata := *bsfXref
-	// // xref_objmapping := Xref_ObjMap_t{
-	// // 	xref_boffset: make(map[int]*ObjMap_t),
-	// // }
-	//
-	// // FIX: save all of this for later use
-	// target := []byte("\n")
-	// rltv_firstlf_inTable := bytes.Index(fulldata, target)
-	// abs_firstlf_inTable := rltv_firstlf_inTable + bsXref_startp
-	// if rltv_firstlf_inTable == -1 {
-	// 	messages.E_index("what file is this bruh")
+	// xref_objmapping := Xref_ObjMap_t{
+	// 	xref_boffset: make(map[int]*ObjMap_t),
 	// }
-	// messages.S_found_at_index("line feed", abs_firstlf_inTable)
-	//
-	// // use this to find next lf
-	// tmpScope := fulldata[rltv_firstlf_inTable+1:]
-	// lastlf_inTable := bytes.Index(tmpScope, target)
-	// for {
-	// 	currentScope := fulldata[rltv_firstlf_inTable:lastlf_inTable]
-	// 	table_fields := bytes.Fields(currentScope)
-	// 	if table_fields == nil {
-	// 		messages.E_cannot_find_fields(table_fields)
-	// 	}
-	// 	messages.S_found_in_field(table_fields)
-	// }
+
+	_, _, startP := read_xref_data(bsfXref, bsXref_startp)
+	fulldata := (*bsfXref)[startP:]
+	for {
+		table_fields := bytes.Fields(fulldata)
+		if table_fields == nil {
+			messages.E_cannot_find_fields(table_fields)
+		}
+		messages.S_found_in_field(table_fields)
+	}
 }
 
 // NOTE: Save for later when find all object is fixed
