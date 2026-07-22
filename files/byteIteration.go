@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"unsafe"
 
 	"PolyMixer/messages"
 )
@@ -148,7 +149,9 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 	return sprt_field[0], sprt_field[1], lastlf
 }
 
+// NOTE: return from the size of fulldata
 func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
+	fulldata := *bsfXref
 	fmt.Printf("[PROCESS START]Find ID reference\n")
 	// xref_objmapping := Xref_ObjMap_t{
 	// 	xref_boffset: make(map[int]*ObjMap_t),
@@ -157,16 +160,33 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 	refStart, numsO, startP := read_xref_data(bsfXref)
 	messages.S_found_xref_data(refStart, numsO, startP, bsXref_startp)
 
-	fulldata := (*bsfXref)[startP:]
 	// NOTE: this should also get the relative index of all fields and convert them to number and store
 	// them in a hash with that looks like -> map[reference ID]relative index and after append that's when we
 	// combined xref with body and then give xref the absolute indexes
 	for {
-		table_fields := bytes.Fields(fulldata)
+		// FIX: wHY THE FUCK IS THIS LOOPING INIFINITELY WITHOUT PRINTING ANYTHING THIS DOESN'T MAKE SENSE!
+		prepareField := fulldata[startP+1:]
+		target := []byte("\n")
+		nextlfIndex := bytes.Index(prepareField, target) + startP
+		makeField := fulldata[startP:nextlfIndex]
+
+		table_fields := bytes.Fields(makeField)
 		if table_fields == nil {
 			messages.E_cannot_find_fields(table_fields)
 		}
-		messages.S_found_in_field(table_fields)
+
+		basePtr := uintptr(unsafe.Pointer(&fulldata[0]))
+		var byteIndex uintptr
+		// NOTE: Group data to struct
+		for i, field := range table_fields {
+			fieldPtr := uintptr(unsafe.Pointer(&field[0]))
+
+			byteIndex = (fieldPtr - basePtr)
+
+			fmt.Printf("[TEMPORARY]field %v: %q start at index %d\n", i, field, byteIndex)
+		}
+		startP = nextlfIndex
+
 	}
 }
 
