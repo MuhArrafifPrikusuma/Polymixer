@@ -38,3 +38,7 @@ func S_found_in_field(field [][]byte) {
 		fmt.Printf("[SUCCESS]Found %s in fields\n", field[i])
 	}
 }
+
+func S_found_xref_data(startP, numOidx, lastlf, startIdx int) {
+	fmt.Printf("Table reference start from: %v\nTotal objects: %v\nsetting new slice starting point to %v\n", startP, numOidx, lastlf+startIdx)
+}
