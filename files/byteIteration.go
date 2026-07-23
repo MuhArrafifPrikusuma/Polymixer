@@ -123,7 +123,7 @@ type Objref_Table_t struct {
 	marker         byte
 }
 type Xref_ObjMap_t struct {
-	xref_BObjoffset map[*ObjMap_t]Objref_Table_t
+	xref_BObjoffset map[int]Objref_Table_t
 }
 
 // consume byte slice slice -> starting point of the reference table and
@@ -161,9 +161,6 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 	fulldata := *bsfXref
 	fmt.Printf("[PROCESS START]Find ID reference\n")
-	// xref_objmapping := Xref_ObjMap_t{
-	// 	xref_boffset: make(map[int]*ObjMap_t),
-	// }
 
 	refStart, numsO, startP := read_xref_data(bsfXref)
 	messages.S_found_xref_data(refStart, numsO, startP, bsXref_startp)
@@ -178,20 +175,30 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 		makeField := fulldata[startP:nextlfIndex]
 
 		table_fields := bytes.Fields(makeField)
+		if len(table_fields) <= 1 {
+			break
+		}
 		if table_fields == nil {
 			messages.E_cannot_find_fields(table_fields)
 		}
 
 		basePtr := uintptr(unsafe.Pointer(&fulldata[0]))
 		var byteIndex uintptr
+		var i int
+		var field []byte
 		// NOTE: Group data to struct
-		for i, field := range table_fields {
+		for i, field = range table_fields {
 			fieldPtr := uintptr(unsafe.Pointer(&field[0]))
 
 			byteIndex = fieldPtr - basePtr
 
 			fmt.Printf("[TEMPORARY]field %v: %q start at index %d\n", i, field, byteIndex)
 		}
+		// objXrefMapping := Xref_ObjMap_t{
+		// 	xref_BObjoffset: make(map[*ObjMap_t]Objref_Table_t),
+		// }
+		// objXrefMapping.xref_BObjoffset[objMap.objIdx_and_ID]
+
 		startP = nextlfIndex + 1
 
 	}
