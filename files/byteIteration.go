@@ -21,6 +21,7 @@ and i will need to rerun that function after append to finally find the new byte
 the old reference table with new one
 */
 
+// NOTE: also don't forget to change the startxref byte offset right before EOF. <- do this after appending
 func Find_xref(f *os.File) (bs, bsfXref *[]byte, xref_start int) {
 	fileStat, err := f.Stat()
 	if err != nil {
