@@ -120,7 +120,7 @@ type Objref_Table_t struct {
 	objbyte_offset int
 	refbyte_offset int
 	genNumber      int
-	marker         byte
+	marker         []byte
 }
 type Xref_ObjMap_t struct {
 	xref_BObjoffset map[int]Objref_Table_t
@@ -159,6 +159,14 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 
 // NOTE: return from the size of fulldata
 func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
+	objRefTable := Objref_Table_t{
+		objbyte_offset: -1,
+		refbyte_offset: -1,
+		genNumber:      -1,
+		marker:         []byte("broken"),
+	}
+	refID := 0
+
 	fulldata := *bsfXref
 	fmt.Printf("[PROCESS START]Find ID reference\n")
 
@@ -188,19 +196,25 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 		var field []byte
 		// NOTE: Group data to struct
 		for i, field = range table_fields {
+			var err error
 			fieldPtr := uintptr(unsafe.Pointer(&field[0]))
 
 			byteIndex = fieldPtr - basePtr
 
-			fmt.Printf("[TEMPORARY]field %v: %q start at index %d\n", i, field, byteIndex)
+			objRefTable.objbyte_offset, err = strconv.Atoi(string(table_fields[0]))
+			objRefTable.refbyte_offset = int(byteIndex) + bsXref_startp
+			objRefTable.genNumber, err = strconv.Atoi(string(table_fields[1]))
+			objRefTable.marker = table_fields[2]
+			if err != nil {
+				messages.E_strconv_atoi(err)
+			}
+
+			fmt.Printf("[TEMPORARY]refID %v -> field %v: %q start at index %d\n", refID, i, field, int(byteIndex)+bsXref_startp)
 		}
-		// objXrefMapping := Xref_ObjMap_t{
-		// 	xref_BObjoffset: make(map[*ObjMap_t]Objref_Table_t),
-		// }
-		// objXrefMapping.xref_BObjoffset[objMap.objIdx_and_ID]
+		// id := objMap.objIdx_and_ID[]
 
 		startP = nextlfIndex + 1
-
+		refID++
 	}
 }
 
