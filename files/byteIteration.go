@@ -21,6 +21,7 @@ and i will need to rerun that function after append to finally find the new byte
 the old reference table with new one
 */
 
+// NOTE: also don't forget to change the startxref byte offset right before EOF. <- do this after appending
 func Find_xref(f *os.File) (bs, bsfXref *[]byte, xref_start int) {
 	fileStat, err := f.Stat()
 	if err != nil {
@@ -106,7 +107,7 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap_t) {
 		}
 		messages.S_found_id(id)
 
-		objMap.objIdx_and_ID[id] = ffieldIndex
+		objMap.objIdx_and_ID[ffieldIndex] = id
 		// +6 so that it doesn't find 'obj' end'obj' <- from here
 		objMap.endobjId[id] = endObjIdx + 6
 
@@ -114,8 +115,15 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap_t) {
 	}
 }
 
+// map this (self explanatory)
+type Objref_Table_t struct {
+	objbyte_offset int
+	refbyte_offset int
+	genNumber      int
+	marker         byte
+}
 type Xref_ObjMap_t struct {
-	xref_boffset map[int]*ObjMap_t
+	xref_BObjoffset map[*ObjMap_t]Objref_Table_t
 }
 
 // consume byte slice slice -> starting point of the reference table and
@@ -164,7 +172,6 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 	// them in a hash with that looks like -> map[reference ID]relative index and after append that's when we
 	// combined xref with body and then give xref the absolute indexes
 	for {
-		// FIX: wHY THE FUCK IS THIS LOOPING INIFINITELY WITHOUT PRINTING ANYTHING THIS DOESN'T MAKE SENSE!
 		prepareField := fulldata[startP+1:]
 		target := []byte("\n")
 		nextlfIndex := bytes.Index(prepareField, target) + startP
@@ -181,11 +188,11 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 		for i, field := range table_fields {
 			fieldPtr := uintptr(unsafe.Pointer(&field[0]))
 
-			byteIndex = (fieldPtr - basePtr)
+			byteIndex = fieldPtr - basePtr
 
 			fmt.Printf("[TEMPORARY]field %v: %q start at index %d\n", i, field, byteIndex)
 		}
-		startP = nextlfIndex
+		startP = nextlfIndex + 1
 
 	}
 }
