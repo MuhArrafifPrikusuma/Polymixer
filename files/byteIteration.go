@@ -209,7 +209,7 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 			objRefTable.objbyte_offset = table_fields[0]
 			objRefTable.refbyte_offset = int(byteIndex) + bsXref_startp
 			objRefTable.genNumber = table_fields[1]
-			objRefTable.marker = table_fields[2]
+			objRefTable.marker = table_fields[2] // <- this is decimal
 			if err != nil {
 				messages.E_strconv_atoi(err)
 			}
