@@ -20,9 +20,10 @@ func TakeArg(arg *Arguments) {
 		log.Fatal("Cannot process more than 2 files... yet")
 	}
 
-	var lastObjId, appendToId int
+	var lastObjId, appendToIdx int
 	var ptrMp3, ptrPdf *os.File
 	var fileType string
+	var objRefPtr *Xref_ObjMap_t
 
 	if len(os.Args) >= 3 {
 		file, err := os.Open(os.Args[1])
@@ -31,7 +32,7 @@ func TakeArg(arg *Arguments) {
 		}
 
 		arg.File1 = file
-		fileType, lastObjId, appendToId, ptrMp3, ptrPdf = getHeader(arg.File1)
+		fileType, lastObjId, appendToIdx, ptrMp3, ptrPdf, objRefPtr = getHeader(arg.File1)
 		messages.S_open_file(arg.File1, fileType)
 
 		file, err = os.Open(os.Args[2])
@@ -40,22 +41,23 @@ func TakeArg(arg *Arguments) {
 			messages.E_open_file(os.Args[2], err)
 		}
 		arg.File2 = file
-		fileType, tmplastObjId, tmpappendToId, tmpptrMp3, tmpptrPdf := getHeader(arg.File2)
+		fileType, tmplastObjId, tmpappendToIdx, tmpptrMp3, tmpptrPdf, tmpobjRefPtr := getHeader(arg.File2)
 
 		if fileType == "PDF" {
 			lastObjId = tmplastObjId
-			appendToId = tmpappendToId
+			appendToIdx = tmpappendToIdx
 			ptrPdf = tmpptrPdf
+			objRefPtr = tmpobjRefPtr
 		} else if fileType == "MP3" {
 			ptrMp3 = tmpptrMp3
 		}
-
 		messages.S_open_file(arg.File2, fileType)
+		Create_audio_object(objRefPtr, ptrPdf, ptrMp3, appendToIdx, lastObjId)
 	}
-	Mix_MP3_and_PDF(ptrPdf, ptrMp3, appendToId, lastObjId)
+	Mix_MP3_and_PDF(ptrPdf, ptrMp3, appendToIdx, lastObjId)
 }
 
-func getHeader(file *os.File) (strReturn string, lastObjId, appendToId int, ptrMp3, ptrPdf *os.File) {
+func getHeader(file *os.File) (strReturn string, lastObjId, appendToIdx int, ptrMp3, ptrPdf *os.File, objRefPtr *Xref_ObjMap_t) {
 	buffer := make([]byte, 4)
 
 	_, err := file.ReadAt(buffer, 0)
@@ -65,12 +67,12 @@ func getHeader(file *os.File) (strReturn string, lastObjId, appendToId int, ptrM
 	if bytes.HasPrefix(buffer, []byte("ID3")) {
 		ptrMp3 = mp3_get_body(file)
 		strReturn = "MP3"
-		return strReturn, 0, 0, ptrMp3, nil
+		return strReturn, 0, 0, ptrMp3, nil, nil
 
 	} else if bytes.HasPrefix(buffer, []byte("%PDF")) {
-		lastObjId, appendToId, ptrPdf = Pdf_open(file)
+		lastObjId, appendToIdx, ptrPdf, objRefPtr = Pdf_open(file)
 		strReturn = "PDF"
-		return strReturn, lastObjId, appendToId, nil, ptrPdf
+		return strReturn, lastObjId, appendToIdx, nil, ptrPdf, objRefPtr
 	}
-	return "unknown file type", 0, 0, nil, nil
+	return "unknown file type", 0, 0, nil, nil, nil
 }

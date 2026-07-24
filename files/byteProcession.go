@@ -39,7 +39,7 @@ type ObjMap_t struct {
 }
 
 // NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
-func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
+func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File, objRefPtr *Xref_ObjMap_t) {
 	objMap := &ObjMap_t{
 		objIdx_and_ID: make(map[int]int),
 		endobjId:      make(map[int]int),
@@ -51,7 +51,7 @@ func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
 	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
 	byteSlice_toXref, byteSlice_fromXref, xref_start_at := Find_xref(file)
 	Find_all_obj(byteSlice_toXref, objMap)
-	Find_ID_reference(byteSlice_fromXref, objMap, xref_start_at)
+	objRefPtr = Find_ID_reference(byteSlice_fromXref, objMap, xref_start_at)
 	appendMp3At = Find_spot_for_new_obj(objMap, file)
 
 	pdfCpy, err = os.Open(fileInfo.Name())
@@ -59,5 +59,8 @@ func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File) {
 		messages.E_open_file(fileInfo.Name(), err)
 	}
 
-	return objId, appendMp3At, pdfCpy
+	return objId, appendMp3At, pdfCpy, objRefPtr
+}
+
+func Create_audio_object(xrefMapping *Xref_ObjMap_t, ptrPDF, ptrMP3 *os.File, appendToIdx, lastObjID int) {
 }
