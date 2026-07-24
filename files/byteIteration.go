@@ -158,7 +158,7 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 }
 
 // NOTE: return from the size of fulldata
-func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
+func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (ptrXrefDat *Xref_ObjMap_t) {
 	refID := 0
 
 	fulldata := *bsfXref
@@ -225,6 +225,7 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 		refID++
 	}
 	fmt.Printf("[PROCESS END]Found! and store all value")
+	return XrefMapping
 }
 
 // NOTE: Save for later when find all object is fixed
@@ -250,10 +251,6 @@ func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 	messages.S_found_at_index("spot to append at", appendToIdx)
 
 	return appendToIdx
-}
-
-// NOTE : create mp3 object to mix
-func create_mp3_obj(appendToIdx, lastObjId int, fileMp3 *os.File) {
 }
 
 func Mix_MP3_and_PDF(filePdf, fileMp3 *os.File, appendToIdx, lastObjId int) {
