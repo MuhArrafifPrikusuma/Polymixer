@@ -117,9 +117,9 @@ func Find_all_obj(byteSlice *[]byte, objMap *ObjMap_t) {
 
 // map this (self explanatory)
 type Objref_Table_t struct {
-	objbyte_offset int
+	objbyte_offset []byte
 	refbyte_offset int
-	genNumber      int
+	genNumber      []byte
 	marker         []byte
 }
 type Xref_ObjMap_t struct {
@@ -159,12 +159,6 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 
 // NOTE: return from the size of fulldata
 func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
-	objRefTable := Objref_Table_t{
-		objbyte_offset: -1,
-		refbyte_offset: -1,
-		genNumber:      -1,
-		marker:         []byte("broken"),
-	}
 	refID := 0
 
 	fulldata := *bsfXref
@@ -172,6 +166,15 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 
 	refStart, numsO, startP := read_xref_data(bsfXref)
 	messages.S_found_xref_data(refStart, numsO, startP, bsXref_startp)
+	objRefTable := &Objref_Table_t{
+		objbyte_offset: []byte(""),
+		refbyte_offset: -1,
+		genNumber:      []byte(""),
+		marker:         []byte(""),
+	}
+	XrefMapping := &Xref_ObjMap_t{
+		xref_BObjoffset: make(map[int]Objref_Table_t),
+	}
 
 	// NOTE: this should also get the relative index of all fields and convert them to number and store
 	// them in a hash with that looks like -> map[reference ID]relative index and after append that's when we
@@ -192,30 +195,36 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) {
 
 		basePtr := uintptr(unsafe.Pointer(&fulldata[0]))
 		var byteIndex uintptr
-		var i int
 		var field []byte
+		objbyte_off_int, objgenNumber_int := 0, 0
+
 		// NOTE: Group data to struct
-		for i, field = range table_fields {
+		for _, field = range table_fields {
 			var err error
 			fieldPtr := uintptr(unsafe.Pointer(&field[0]))
 
 			byteIndex = fieldPtr - basePtr
-
-			objRefTable.objbyte_offset, err = strconv.Atoi(string(table_fields[0]))
+			objbyte_off_int, err = strconv.Atoi(string(table_fields[0]))
+			objgenNumber_int, err = strconv.Atoi(string(table_fields[1]))
+			objRefTable.objbyte_offset = table_fields[0]
 			objRefTable.refbyte_offset = int(byteIndex) + bsXref_startp
-			objRefTable.genNumber, err = strconv.Atoi(string(table_fields[1]))
+			objRefTable.genNumber = table_fields[1]
 			objRefTable.marker = table_fields[2]
 			if err != nil {
 				messages.E_strconv_atoi(err)
 			}
-
-			fmt.Printf("[TEMPORARY]refID %v -> field %v: %q start at index %d\n", refID, i, field, int(byteIndex)+bsXref_startp)
 		}
+		id := objMap.objIdx_and_ID[objbyte_off_int]
+		XrefMapping.xref_BObjoffset[id] = *objRefTable
+		fmt.Printf("[ALLOCATE]sizeof %vB for -> objID %v\n", unsafe.Sizeof(*objRefTable), id)
+		fmt.Printf("[STORE]ref offset: %v\n[STORE]byte offset: %v\n[STORE]genNumber: %v\n[STORE]marker: %v\n",
+			objRefTable.refbyte_offset, objbyte_off_int, objgenNumber_int, objRefTable.marker)
 		// id := objMap.objIdx_and_ID[]
 
 		startP = nextlfIndex + 1
 		refID++
 	}
+	fmt.Printf("[PROCESS END]Found! and store all value")
 }
 
 // NOTE: Save for later when find all object is fixed
