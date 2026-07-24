@@ -241,9 +241,9 @@ func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 	if err != nil {
 		messages.E_read(err)
 	}
-	// temporary data
+
 	findLastLineFeed := buf[0:]
-	// this is the actual one but need change -> buf[objidx:xrefstrtidx]
+
 	appendToIdx := bytes.Index(findLastLineFeed, []byte("\n")) + 1
 	if appendToIdx == -1 {
 		messages.E_index("line feed")
@@ -251,6 +251,24 @@ func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 	messages.S_found_at_index("spot to append at", appendToIdx)
 
 	return appendToIdx
+}
+
+// NOTE: Find a way to replace the old value with the new value
+func StartXref_refOffset(bsfXref *[]byte, bsXref_startp_old, bsXref_startp_new int) {
+	fulldata := *bsfXref
+
+	fstartxref := bytes.Index(fulldata, []byte("startxref"))
+	flf := bytes.Index(fulldata[fstartxref:], []byte("\n"))
+	fnlf := bytes.Index(fulldata[flf+1:], []byte("\n"))
+	startxref_valF := bytes.Fields(fulldata[flf:fnlf])
+
+	startRefInt, err := strconv.Atoi(string(startxref_valF[0]))
+	if err != nil {
+		messages.E_strconv_atoi(err)
+	}
+
+	new_startRefInt := startRefInt + (bsXref_startp_new - bsXref_startp_old)
+	new_startRefByte := strconv.Itoa(new_startRefInt)
 }
 
 func Mix_MP3_and_PDF(filePdf, fileMp3 *os.File, appendToIdx, lastObjId int) {
