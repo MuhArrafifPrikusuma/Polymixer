@@ -158,7 +158,7 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 }
 
 // NOTE: return from the size of fulldata
-func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (ptrXrefDat *Xref_ObjMap_t) {
+func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (ptrXrefDat *Xref_ObjMap_t, firstFoundIDoffset int) {
 	refID := 0
 
 	fulldata := *bsfXref
@@ -215,6 +215,9 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (pt
 			}
 		}
 		id := objMap.objIdx_and_ID[objbyte_off_int]
+		if objbyte_off_int < firstFoundIDoffset || firstFoundIDoffset == 0 {
+			firstFoundIDoffset = objbyte_off_int
+		}
 		XrefMapping.xref_BObjoffset[id] = *objRefTable
 		fmt.Printf("[ALLOCATE]sizeof %vB for -> objID %v\n", unsafe.Sizeof(*objRefTable), id)
 		fmt.Printf("[STORE]ref offset: %v\n[STORE]byte offset: %v\n[STORE]genNumber: %v\n[STORE]marker: %v\n",
@@ -224,13 +227,12 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (pt
 		startP = nextlfIndex + 1
 		refID++
 	}
-	fmt.Printf("[PROCESS END]Found! and store all value")
-	return XrefMapping
+	fmt.Println("[PROCESS END]Found! and store all value")
+	return XrefMapping, firstFoundIDoffset
 }
 
-// NOTE: Save for later when find all object is fixed
-
-func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
+// CUT the head to then append the mp3 objstream right after head
+func Cut_HEAD_to(objMapData *ObjMap_t, file *os.File, firstFoundID int) int {
 	fileStat, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -242,36 +244,38 @@ func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 		messages.E_read(err)
 	}
 
-	findLastLineFeed := buf[0:]
+	findLastLineFeed := buf[:firstFoundID]
+	fmt.Println(firstFoundID)
 
-	appendToIdx := bytes.Index(findLastLineFeed, []byte("\n")) + 1
-	if appendToIdx == -1 {
+	// this will go to the previously filled position by id X
+	cutTo := bytes.LastIndex(findLastLineFeed, []byte("\n"))
+	if cutTo == -1 {
 		messages.E_index("line feed")
 	}
-	messages.S_found_at_index("spot to append at", appendToIdx)
+	messages.S_found_at_index("spot to append at", cutTo)
 
-	return appendToIdx
+	return cutTo
 }
 
 // NOTE: Find a way to replace the old value with the new value
-func StartXref_refOffset(bsfXref *[]byte, bsXref_startp_old, bsXref_startp_new int) {
-	fulldata := *bsfXref
-
-	fstartxref := bytes.Index(fulldata, []byte("startxref"))
-	flf := bytes.Index(fulldata[fstartxref:], []byte("\n"))
-	fnlf := bytes.Index(fulldata[flf+1:], []byte("\n"))
-	startxref_valF := bytes.Fields(fulldata[flf:fnlf])
-
-	startRefInt, err := strconv.Atoi(string(startxref_valF[0]))
-	if err != nil {
-		messages.E_strconv_atoi(err)
-	}
-
-	new_startRefInt := startRefInt + (bsXref_startp_new - bsXref_startp_old)
-	new_startRefByte := strconv.Itoa(new_startRefInt)
+func StartXref_refOffset(bsfXref *[]byte, added int) {
+	// fulldata := *bsfXref
+	//
+	// fstartxref := bytes.Index(fulldata, []byte("startxref"))
+	// flf := bytes.Index(fulldata[fstartxref:], []byte("\n"))
+	// fnlf := bytes.Index(fulldata[flf+1:], []byte("\n"))
+	// startxref_valF := bytes.Fields(fulldata[flf:fnlf])
+	//
+	// startRefInt, err := strconv.Atoi(string(startxref_valF[0]))
+	// if err != nil {
+	// 	messages.E_strconv_atoi(err)
+	// }
+	//
+	// new_startRefInt := startRefInt + dded
+	// new_startRefByte := strconv.Itoa(new_startRefInt)
 }
 
-func Mix_MP3_and_PDF(filePdf, fileMp3 *os.File, appendToIdx, lastObjId int) {
+func Mix_MP3_and_PDF(filePdf *os.File, fileMp3 *[]byte, appendToIdx, lastObjId int, objRefTable *Xref_ObjMap_t) {
 	//  fmt.Printf("[PROCESS] Mixing files\n")
 	//  fileStatPdf, err := filePdf.Stat()
 	//  if err != nil {
