@@ -259,34 +259,43 @@ func Cut_HEAD_to(objMapData *ObjMap_t, file *os.File, firstFoundID int) int {
 
 // take replace startxref with []new data
 func StartXref_refOffset(bsfXref *[]byte, added int) *[]byte {
+	// NOTE: remember to remove all of this temporary print statements
 	fulldata := *bsfXref
 	fmt.Println(len(fulldata))
 
 	fstartxref := bytes.Index(fulldata, []byte("startxref"))
-	fmt.Println(fstartxref)
-	newSlice := fulldata[fstartxref:]
-	flf := bytes.Index(newSlice, []byte("\n")) + fstartxref
-	newSlice = fulldata[flf+1:]
-	fnlf := bytes.Index(newSlice, []byte("\n")) + flf
-	startxref_valF := bytes.Fields(fulldata[flf:fnlf])
-	fmt.Println(flf, fnlf)
+	flf := bytes.IndexByte(fulldata[fstartxref:], '\n')
 
-	// FIX: this bullshit is always 0
-	var new_refIdx int
-	for i := range startxref_valF {
-		startRefInt, err := strconv.Atoi(string(startxref_valF[i]))
-		if err != nil {
-			messages.E_strconv_atoi(err)
-		}
-		new_refIdx += startRefInt * i
+	flf += fstartxref + 1
+	fnlf := bytes.IndexByte(fulldata[flf:], '\n')
+	if flf == -1 || fnlf == -1 || fstartxref == -1 {
+		messages.E_index("startxref")
+	} else {
+		fnlf += flf
 	}
-	fmt.Println(new_refIdx)
+	fmt.Println(flf, fnlf)
+	startxref_valF := bytes.Fields(fulldata[flf:fnlf])
 
-	new_startRefInt := new_refIdx + added
-	new_startRefByte := strconv.Itoa(new_startRefInt)
-	bytes.Replace(fulldata, fulldata[flf+1:fnlf-1], []byte(new_startRefByte), -1)
+	startRefInt, err := strconv.Atoi(string(startxref_valF[0]))
+	if err != nil {
+		messages.E_strconv_atoi(err)
+	}
+	fmt.Println(startxref_valF[0])
+	fmt.Println(startRefInt)
+	fmt.Println(added)
 
-	return &fulldata
+	new_startRefByte := strconv.Itoa(startRefInt + added)
+	fmt.Println(new_startRefByte)
+
+	var buf bytes.Buffer
+	buf.Write(fulldata[:flf])
+	buf.Write([]byte(new_startRefByte))
+	buf.Write(fulldata[fnlf:])
+
+	newXref := buf.Bytes()
+	fmt.Println(newXref)
+
+	return &newXref
 }
 
 func Mix_MP3_and_PDF(filePdf *os.File, bsfXref, mp3Obj *[]byte, cutToIDX int, objRefTable *Xref_ObjMap_t) {
