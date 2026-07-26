@@ -20,11 +20,10 @@ func TakeArg(arg *Arguments) {
 		log.Fatal("Cannot process more than 2 files... yet")
 	}
 
-	var lastObjId, cutToIdx, objSize int
-	var ptrPdf *os.File
-	var ptrMp3, newObj, bsfXref *[]byte
+	var lastObjId, appendToIdx int
+	var ptrMp3, ptrPdf *os.File
 	var fileType string
-	var objRefMap *Xref_ObjMap_t
+	var objRefPtr *Xref_ObjMap_t
 
 	if len(os.Args) >= 3 {
 		file, err := os.Open(os.Args[1])
@@ -33,7 +32,7 @@ func TakeArg(arg *Arguments) {
 		}
 
 		arg.File1 = file
-		fileType, lastObjId, cutToIdx, ptrMp3, ptrPdf, objRefMap, bsfXref = getHeader(arg.File1)
+		fileType, lastObjId, appendToIdx, ptrMp3, ptrPdf, objRefPtr = getHeader(arg.File1)
 		messages.S_open_file(arg.File1, fileType)
 
 		file, err = os.Open(os.Args[2])
@@ -42,25 +41,23 @@ func TakeArg(arg *Arguments) {
 			messages.E_open_file(os.Args[2], err)
 		}
 		arg.File2 = file
-		fileType, tmplastObjId, tmpcutToIdx, tmpptrMp3, tmpptrPdf, tmpobjRefMap, tmpbsxfXref := getHeader(arg.File2)
+		fileType, tmplastObjId, tmpappendToIdx, tmpptrMp3, tmpptrPdf, tmpobjRefPtr := getHeader(arg.File2)
 
 		if fileType == "PDF" {
 			lastObjId = tmplastObjId
-			cutToIdx = tmpcutToIdx // <- this will be used for mixing
+			appendToIdx = tmpappendToIdx
 			ptrPdf = tmpptrPdf
-			objRefMap = tmpobjRefMap
-			bsfXref = tmpbsxfXref
+			objRefPtr = tmpobjRefPtr
 		} else if fileType == "MP3" {
 			ptrMp3 = tmpptrMp3
 		}
 		messages.S_open_file(arg.File2, fileType)
-		newObj, objSize = Create_audio_object(ptrMp3, lastObjId)
+		Create_audio_object(objRefPtr, ptrPdf, ptrMp3, appendToIdx, lastObjId)
 	}
-	newXrefSlice := StartXref_refOffset(bsfXref, objSize)
-	Mix_MP3_and_PDF(ptrPdf, newXrefSlice, newObj, cutToIdx, objRefMap)
+	Mix_MP3_and_PDF(ptrPdf, ptrMp3, appendToIdx, lastObjId)
 }
 
-func getHeader(file *os.File) (strReturn string, lastObjId, cutToIdx int, ptrMp3 *[]byte, ptrPdf *os.File, objRefPtr *Xref_ObjMap_t, bsfXref *[]byte) {
+func getHeader(file *os.File) (strReturn string, lastObjId, appendToIdx int, ptrMp3, ptrPdf *os.File, objRefPtr *Xref_ObjMap_t) {
 	buffer := make([]byte, 4)
 
 	_, err := file.ReadAt(buffer, 0)
@@ -70,12 +67,12 @@ func getHeader(file *os.File) (strReturn string, lastObjId, cutToIdx int, ptrMp3
 	if bytes.HasPrefix(buffer, []byte("ID3")) {
 		ptrMp3 = mp3_get_body(file)
 		strReturn = "MP3"
-		return strReturn, 0, 0, ptrMp3, nil, nil, nil
+		return strReturn, 0, 0, ptrMp3, nil, nil
 
 	} else if bytes.HasPrefix(buffer, []byte("%PDF")) {
-		lastObjId, cutToIdx, ptrPdf, objRefPtr, bsfXref = Pdf_open(file)
+		lastObjId, appendToIdx, ptrPdf, objRefPtr = Pdf_open(file)
 		strReturn = "PDF"
-		return strReturn, lastObjId, cutToIdx, nil, ptrPdf, objRefPtr, bsfXref
+		return strReturn, lastObjId, appendToIdx, nil, ptrPdf, objRefPtr
 	}
-	return "unknown file type", 0, 0, nil, nil, nil, nil
+	return "unknown file type", 0, 0, nil, nil, nil
 }
