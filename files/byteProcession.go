@@ -45,7 +45,7 @@ type ObjMap_t struct {
 }
 
 // NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
-func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *os.File, objRefPtr *Xref_ObjMap_t) {
+func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *os.File, objRefPtr *Xref_ObjMap_t, bsfXref *[]byte) {
 	objMap := &ObjMap_t{
 		objIdx_and_ID: make(map[int]int),
 		endobjId:      make(map[int]int),
@@ -65,11 +65,12 @@ func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *os.File, objRefPtr *Xref
 		messages.E_open_file(fileInfo.Name(), err)
 	}
 
-	return objId, cutTo, pdfCpy, objRefPtr
+	return objId, cutTo, pdfCpy, objRefPtr, byteSlice_fromXref
 }
 
 func Create_audio_object(ptrMP3 *[]byte, lastObjID int) (obj *[]byte, size int) {
 	fmt.Println("[PROCESS START]creating new object...")
+	defer fmt.Println("[PROCESS END]Object created successfully")
 	content := *ptrMP3
 	objID := lastObjID + 1
 	obj_HEADER := fmt.Sprintf("%d 0 obj\n", objID)

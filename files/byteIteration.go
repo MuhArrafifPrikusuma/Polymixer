@@ -257,43 +257,37 @@ func Cut_HEAD_to(objMapData *ObjMap_t, file *os.File, firstFoundID int) int {
 	return cutTo
 }
 
-// NOTE: Find a way to replace the old value with the new value
-func StartXref_refOffset(bsfXref *[]byte, added int) {
-	// fulldata := *bsfXref
-	//
-	// fstartxref := bytes.Index(fulldata, []byte("startxref"))
-	// flf := bytes.Index(fulldata[fstartxref:], []byte("\n"))
-	// fnlf := bytes.Index(fulldata[flf+1:], []byte("\n"))
-	// startxref_valF := bytes.Fields(fulldata[flf:fnlf])
-	//
-	// startRefInt, err := strconv.Atoi(string(startxref_valF[0]))
-	// if err != nil {
-	// 	messages.E_strconv_atoi(err)
-	// }
-	//
-	// new_startRefInt := startRefInt + dded
-	// new_startRefByte := strconv.Itoa(new_startRefInt)
+// take replace startxref with []new data
+func StartXref_refOffset(bsfXref *[]byte, added int) *[]byte {
+	fulldata := *bsfXref
+	fmt.Println(len(fulldata))
+
+	fstartxref := bytes.Index(fulldata, []byte("startxref"))
+	fmt.Println(fstartxref)
+	newSlice := fulldata[fstartxref:]
+	flf := bytes.Index(newSlice, []byte("\n")) + fstartxref
+	newSlice = fulldata[flf+1:]
+	fnlf := bytes.Index(newSlice, []byte("\n")) + flf
+	startxref_valF := bytes.Fields(fulldata[flf:fnlf])
+	fmt.Println(flf, fnlf)
+
+	// FIX: this bullshit is always 0
+	var new_refIdx int
+	for i := range startxref_valF {
+		startRefInt, err := strconv.Atoi(string(startxref_valF[i]))
+		if err != nil {
+			messages.E_strconv_atoi(err)
+		}
+		new_refIdx += startRefInt * i
+	}
+	fmt.Println(new_refIdx)
+
+	new_startRefInt := new_refIdx + added
+	new_startRefByte := strconv.Itoa(new_startRefInt)
+	bytes.Replace(fulldata, fulldata[flf+1:fnlf-1], []byte(new_startRefByte), -1)
+
+	return &fulldata
 }
 
-func Mix_MP3_and_PDF(filePdf *os.File, fileMp3 *[]byte, appendToIdx, lastObjId int, objRefTable *Xref_ObjMap_t) {
-	//  fmt.Printf("[PROCESS] Mixing files\n")
-	//  fileStatPdf, err := filePdf.Stat()
-	//  if err != nil {
-	//  	messages.E_stat_read(err)
-	//  }
-	//  fileStatMp3, err := fileMp3.Stat()
-	//  if err != nil {
-	//  	messages.E_stat_read(err)
-	//  }
-	//  // create buffer for newfile
-	//  buf := make([]byte, fileStatPdf.Size()+fileStatMp3.Size())
-	//  bufPdf := make([]byte, fileStatPdf.Size())
-	//  bufMp3 := make([]byte, fileStatMp3.Size())
-	//  _, err = filePdf.ReadAt(bufPdf, 0)
-	//  if err != nil {
-	//  	messages.E_read(err)
-	//  }
-	//  // mp3 goes after this
-	//  pdfFileWindow := bufPdf[0:appendToIdx]
-	//  create_mp3_obj(appendToIdx, lastObjId, fileMp3)
+func Mix_MP3_and_PDF(filePdf *os.File, bsfXref, mp3Obj *[]byte, cutToIDX int, objRefTable *Xref_ObjMap_t) {
 }
