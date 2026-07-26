@@ -7,8 +7,13 @@ import (
 	"PolyMixer/messages"
 )
 
+// NOTE: use this to create a new file from the combination of all slices
+// testCreate, err := os.Create("testcreate.mp3")
+// defer testCreate.Close()
+// _, err = testCreate.Write(mp3Body)
+
 // basically cut his head we don't need it
-func mp3_get_body(file *os.File) *os.File {
+func mp3_get_body(file *os.File) *[]byte {
 	fileInfo, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -21,25 +26,26 @@ func mp3_get_body(file *os.File) *os.File {
 	if err != nil {
 		messages.E_read(err)
 	}
-	mp3Body := buf[16:]
+	mp3Body := buf[10:]
 	messages.S_file_size("MP3", "headless", float64(len(mp3Body)))
 
 	mp3Cpy, err := os.Open(fileInfo.Name())
 	if err != nil {
 		messages.E_open_file(fileInfo.Name(), err)
 	}
-	return mp3Cpy
+	messages.S_open_file(mp3Cpy, "MP3")
+	return &mp3Body
 }
 
 type ObjMap_t struct {
-	// contain [ID]index of ID
+	// contain [IDx]index of ID
 	objIdx_and_ID map[int]int
 	// contain [ID]index of endobj
 	endobjId map[int]int
 }
 
 // NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
-func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File, objRefPtr *Xref_ObjMap_t) {
+func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *os.File, objRefPtr *Xref_ObjMap_t, bsfXref *[]byte) {
 	objMap := &ObjMap_t{
 		objIdx_and_ID: make(map[int]int),
 		endobjId:      make(map[int]int),
@@ -51,16 +57,30 @@ func Pdf_open(file *os.File) (objId, appendMp3At int, pdfCpy *os.File, objRefPtr
 	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
 	byteSlice_toXref, byteSlice_fromXref, xref_start_at := Find_xref(file)
 	Find_all_obj(byteSlice_toXref, objMap)
-	objRefPtr = Find_ID_reference(byteSlice_fromXref, objMap, xref_start_at)
-	appendMp3At = Find_spot_for_new_obj(objMap, file)
+	objRefPtr, firstFoundID := Find_ID_reference(byteSlice_fromXref, objMap, xref_start_at)
+	cutTo = Cut_HEAD_to(objMap, file, firstFoundID)
 
 	pdfCpy, err = os.Open(fileInfo.Name())
 	if err != nil {
 		messages.E_open_file(fileInfo.Name(), err)
 	}
 
-	return objId, appendMp3At, pdfCpy, objRefPtr
+	return objId, cutTo, pdfCpy, objRefPtr, byteSlice_fromXref
 }
 
-func Create_audio_object(xrefMapping *Xref_ObjMap_t, ptrPDF, ptrMP3 *os.File, appendToIdx, lastObjID int) {
+func Create_audio_object(ptrMP3 *[]byte, lastObjID int) (obj *[]byte, size int) {
+	fmt.Println("[PROCESS START]creating new object...")
+	defer fmt.Println("[PROCESS END]Object created successfully")
+	content := *ptrMP3
+	objID := lastObjID + 1
+	obj_HEADER := fmt.Sprintf("%d 0 obj\n", objID)
+	obj_METADATA := fmt.Sprintf("<</Length %d>>\n", len(content))
+
+	mergeOBJ := []byte(obj_HEADER + obj_METADATA + "stream\n")
+	mergeOBJ = append(mergeOBJ, content...)
+	mergeOBJ = append(mergeOBJ, []byte("\nendstream\nendobj\n")...)
+
+	objSize := len(mergeOBJ)
+
+	return &mergeOBJ, objSize
 }

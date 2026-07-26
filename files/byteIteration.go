@@ -158,7 +158,7 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 }
 
 // NOTE: return from the size of fulldata
-func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (ptrXrefDat *Xref_ObjMap_t) {
+func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (ptrXrefDat *Xref_ObjMap_t, firstFoundIDoffset int) {
 	refID := 0
 
 	fulldata := *bsfXref
@@ -215,6 +215,9 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (pt
 			}
 		}
 		id := objMap.objIdx_and_ID[objbyte_off_int]
+		if objbyte_off_int < firstFoundIDoffset || firstFoundIDoffset == 0 {
+			firstFoundIDoffset = objbyte_off_int
+		}
 		XrefMapping.xref_BObjoffset[id] = *objRefTable
 		fmt.Printf("[ALLOCATE]sizeof %vB for -> objID %v\n", unsafe.Sizeof(*objRefTable), id)
 		fmt.Printf("[STORE]ref offset: %v\n[STORE]byte offset: %v\n[STORE]genNumber: %v\n[STORE]marker: %v\n",
@@ -224,13 +227,12 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (pt
 		startP = nextlfIndex + 1
 		refID++
 	}
-	fmt.Printf("[PROCESS END]Found! and store all value")
-	return XrefMapping
+	fmt.Println("[PROCESS END]Found! and store all value")
+	return XrefMapping, firstFoundIDoffset
 }
 
-// NOTE: Save for later when find all object is fixed
-
-func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
+// CUT the head to then append the mp3 objstream right after head
+func Cut_HEAD_to(objMapData *ObjMap_t, file *os.File, firstFoundID int) int {
 	fileStat, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -241,37 +243,60 @@ func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 	if err != nil {
 		messages.E_read(err)
 	}
-	// temporary data
-	findLastLineFeed := buf[0:]
-	// this is the actual one but need change -> buf[objidx:xrefstrtidx]
-	appendToIdx := bytes.Index(findLastLineFeed, []byte("\n")) + 1
-	if appendToIdx == -1 {
+
+	findLastLineFeed := buf[:firstFoundID]
+	fmt.Println(firstFoundID)
+
+	// this will go to the previously filled position by id X
+	cutTo := bytes.LastIndex(findLastLineFeed, []byte("\n"))
+	if cutTo == -1 {
 		messages.E_index("line feed")
 	}
-	messages.S_found_at_index("spot to append at", appendToIdx)
+	messages.S_found_at_index("spot to append at", cutTo)
 
-	return appendToIdx
+	return cutTo
 }
 
-func Mix_MP3_and_PDF(filePdf, fileMp3 *os.File, appendToIdx, lastObjId int) {
-	//  fmt.Printf("[PROCESS] Mixing files\n")
-	//  fileStatPdf, err := filePdf.Stat()
-	//  if err != nil {
-	//  	messages.E_stat_read(err)
-	//  }
-	//  fileStatMp3, err := fileMp3.Stat()
-	//  if err != nil {
-	//  	messages.E_stat_read(err)
-	//  }
-	//  // create buffer for newfile
-	//  buf := make([]byte, fileStatPdf.Size()+fileStatMp3.Size())
-	//  bufPdf := make([]byte, fileStatPdf.Size())
-	//  bufMp3 := make([]byte, fileStatMp3.Size())
-	//  _, err = filePdf.ReadAt(bufPdf, 0)
-	//  if err != nil {
-	//  	messages.E_read(err)
-	//  }
-	//  // mp3 goes after this
-	//  pdfFileWindow := bufPdf[0:appendToIdx]
-	//  create_mp3_obj(appendToIdx, lastObjId, fileMp3)
+// take replace startxref with []new data
+func StartXref_refOffset(bsfXref *[]byte, added int) *[]byte {
+	// NOTE: remember to remove all of this temporary print statements
+	fulldata := *bsfXref
+	fmt.Println(len(fulldata))
+
+	fstartxref := bytes.Index(fulldata, []byte("startxref"))
+	flf := bytes.IndexByte(fulldata[fstartxref:], '\n')
+
+	flf += fstartxref + 1
+	fnlf := bytes.IndexByte(fulldata[flf:], '\n')
+	if flf == -1 || fnlf == -1 || fstartxref == -1 {
+		messages.E_index("startxref")
+	} else {
+		fnlf += flf
+	}
+	fmt.Println(flf, fnlf)
+	startxref_valF := bytes.Fields(fulldata[flf:fnlf])
+
+	startRefInt, err := strconv.Atoi(string(startxref_valF[0]))
+	if err != nil {
+		messages.E_strconv_atoi(err)
+	}
+	fmt.Println(startxref_valF[0])
+	fmt.Println(startRefInt)
+	fmt.Println(added)
+
+	new_startRefByte := strconv.Itoa(startRefInt + added)
+	fmt.Println(new_startRefByte)
+
+	var buf bytes.Buffer
+	buf.Write(fulldata[:flf])
+	buf.Write([]byte(new_startRefByte))
+	buf.Write(fulldata[fnlf:])
+
+	newXref := buf.Bytes()
+	fmt.Println(newXref)
+
+	return &newXref
+}
+
+func Mix_MP3_and_PDF(filePdf *os.File, bsfXref, mp3Obj *[]byte, cutToIDX int, objRefTable *Xref_ObjMap_t) {
 }
