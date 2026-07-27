@@ -8,7 +8,7 @@ import (
 )
 
 // basically cut his head we don't need it
-func mp3_get_body(file *os.File) *[]byte {
+func mp3_get_body(file *os.File) *os.File {
 	fileInfo, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -21,19 +21,18 @@ func mp3_get_body(file *os.File) *[]byte {
 	if err != nil {
 		messages.E_read(err)
 	}
-	mp3Body := buf[10:]
+	mp3Body := buf[16:]
 	messages.S_file_size("MP3", "headless", float64(len(mp3Body)))
 
 	mp3Cpy, err := os.Open(fileInfo.Name())
 	if err != nil {
 		messages.E_open_file(fileInfo.Name(), err)
 	}
-	messages.S_open_file(mp3Cpy, "MP3")
-	return &mp3Body
+	return mp3Cpy
 }
 
 type ObjMap_t struct {
-	// contain [IDx]index of ID
+	// contain [ID]index of ID
 	objIdx_and_ID map[int]int
 	// contain [ID]index of endobj
 	endobjId map[int]int
@@ -61,21 +60,7 @@ func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *[]byte, objRefPtr *Xref_
 	return objId, cutTo, byteSlice_toXref, objRefPtr, byteSlice_fromXref
 }
 
-func Create_audio_object(ptrMP3 *[]byte, lastObjID int) (obj *[]byte, size int) {
-	fmt.Println("[PROCESS START]creating new object...")
-	defer fmt.Println("[PROCESS END]Object created successfully")
-	content := *ptrMP3
-	objID := lastObjID + 1
-	obj_HEADER := fmt.Sprintf("%d 0 obj\n", objID)
-	obj_METADATA := fmt.Sprintf("<</Length %d>>\n", len(content))
-
-	mergeOBJ := []byte(obj_HEADER + obj_METADATA + "stream\n")
-	mergeOBJ = append(mergeOBJ, content...)
-	mergeOBJ = append(mergeOBJ, []byte("\nendstream\nendobj\n")...)
-
-	objSize := len(mergeOBJ)
-
-	return &mergeOBJ, objSize
+func Create_audio_object(xrefMapping *Xref_ObjMap_t, ptrPDF, ptrMP3 *os.File, appendToIdx, lastObjID int) {
 }
 
 func Mix_MP3_and_PDF(filePdf, bsfXref, mp3Obj *[]byte, cutToIDX int, newName string) {

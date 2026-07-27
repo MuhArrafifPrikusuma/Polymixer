@@ -199,9 +199,6 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (pt
 			}
 		}
 		id := objMap.objIdx_and_ID[objbyte_off_int]
-		if objbyte_off_int < firstFoundIDoffset || firstFoundIDoffset == 0 {
-			firstFoundIDoffset = objbyte_off_int
-		}
 		XrefMapping.xref_BObjoffset[id] = *objRefTable
 		fmt.Printf("[ALLOCATE]sizeof %vB for -> objID %v\n", unsafe.Sizeof(*objRefTable), id)
 		fmt.Printf("[STORE]ref offset: %v\n[STORE]byte offset: %v\n[STORE]genNumber: %v\n[STORE]marker: %v\n",
@@ -211,12 +208,13 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (pt
 		startP = nextlfIndex + 1
 		refID++
 	}
-	fmt.Println("[PROCESS END]Found! and store all value")
-	return XrefMapping, firstFoundIDoffset
+	fmt.Printf("[PROCESS END]Found! and store all value")
+	return XrefMapping
 }
 
-// CUT the head to then append the mp3 objstream right after head
-func Cut_HEAD_to(objMapData *ObjMap_t, file *os.File, firstFoundID int) int {
+// NOTE: Save for later when find all object is fixed
+
+func Find_spot_for_new_obj(objMapData *ObjMap_t, file *os.File) int {
 	fileStat, err := file.Stat()
 	if err != nil {
 		messages.E_stat_read(err)
@@ -227,13 +225,11 @@ func Cut_HEAD_to(objMapData *ObjMap_t, file *os.File, firstFoundID int) int {
 	if err != nil {
 		messages.E_read(err)
 	}
-
-	findLastLineFeed := buf[:firstFoundID]
-	fmt.Println(firstFoundID)
-
-	// this will go to the previously filled position by id X
-	cutTo := bytes.LastIndex(findLastLineFeed, []byte("\n"))
-	if cutTo == -1 {
+	// temporary data
+	findLastLineFeed := buf[0:]
+	// this is the actual one but need change -> buf[objidx:xrefstrtidx]
+	appendToIdx := bytes.Index(findLastLineFeed, []byte("\n")) + 1
+	if appendToIdx == -1 {
 		messages.E_index("line feed")
 	}
 	messages.S_found_at_index("spot to append at", cutTo)
@@ -271,5 +267,5 @@ func StartXref_refOffset(bsfXref *[]byte, added int) *[]byte {
 
 	newXref := buf.Bytes()
 
-	return &newXref
+	return appendToIdx
 }
