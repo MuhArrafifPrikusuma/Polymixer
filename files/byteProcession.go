@@ -32,6 +32,24 @@ func mp3_get_body(file *os.File) *[]byte {
 	return &mp3Body
 }
 
+// this doesn't work yet but im working on it
+func mp4_read(file *os.File) *[]byte {
+	fileinfo, err := file.Stat()
+	if err != nil {
+		messages.E_stat_read(err)
+	}
+	messages.S_file_size("MP4", "full size", float64(fileinfo.Size()))
+	buf := make([]byte, fileinfo.Size())
+
+	_, err = file.ReadAt(buf, 0)
+	if err != nil {
+		messages.E_read(err)
+	}
+	mp4Cpy := buf[:]
+
+	return &mp4Cpy
+}
+
 type ObjMap_t struct {
 	// contain [IDx]index of ID
 	objIdx_and_ID map[int]int
@@ -61,7 +79,7 @@ func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *[]byte, objRefPtr *Xref_
 	return objId, cutTo, byteSlice_toXref, objRefPtr, byteSlice_fromXref
 }
 
-func Create_audio_object(ptrMP3 *[]byte, lastObjID int) (obj *[]byte, size int) {
+func Create_audio_video_object(ptrMP3 *[]byte, lastObjID int) (obj *[]byte, size int) {
 	fmt.Println("[PROCESS START]creating new object...")
 	defer fmt.Println("[PROCESS END]Object created successfully")
 	content := *ptrMP3
