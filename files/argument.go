@@ -46,14 +46,14 @@ func TakeArg(arg *Arguments) {
 
 		if fileType == "PDF" {
 			lastObjId = tmplastObjId
-			appendToIdx = tmpappendToIdx
+			cutToIdx = tmpcutToIdx // <- this will be used for mixing
 			ptrPdf = tmpptrPdf
 			bsfXref = tmpbsxfXref
 		} else if fileType == "MP3" {
 			ptrMp3 = tmpptrMp3
 		}
 		messages.S_open_file(arg.File2, fileType)
-		Create_audio_object(objRefPtr, ptrPdf, ptrMp3, appendToIdx, lastObjId)
+		newObj, objSize = Create_audio_object(ptrMp3, lastObjId)
 	}
 	newXrefSlice := StartXref_refOffset(bsfXref, objSize)
 	Mix_MP3_and_PDF(ptrPdf, newXrefSlice, newObj, cutToIdx, fname)
@@ -69,12 +69,12 @@ func getHeader(file *os.File) (strReturn string, lastObjId, cutToIdx int, ptrMp3
 	if bytes.HasPrefix(buffer, []byte("ID3")) {
 		ptrMp3 = mp3_get_body(file)
 		strReturn = "MP3"
-		return strReturn, 0, 0, ptrMp3, nil, nil
+		return strReturn, 0, 0, ptrMp3, nil, nil, nil
 
 	} else if bytes.HasPrefix(buffer, []byte("%PDF")) {
-		lastObjId, appendToIdx, ptrPdf, objRefPtr = Pdf_open(file)
+		lastObjId, cutToIdx, ptrPdf, objRefPtr, bsfXref = Pdf_open(file)
 		strReturn = "PDF"
-		return strReturn, lastObjId, appendToIdx, nil, ptrPdf, objRefPtr
+		return strReturn, lastObjId, cutToIdx, nil, ptrPdf, objRefPtr, bsfXref
 	}
-	return "unknown file type", 0, 0, nil, nil, nil
+	return "unknown file type", 0, 0, nil, nil, nil, nil
 }
