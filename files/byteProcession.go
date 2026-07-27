@@ -93,5 +93,9 @@ func Mix_MP3_and_PDF(filePdf, bsfXref, mp3Obj *[]byte, cutToIDX int, newName str
 		return
 	}
 
+	defer newfile.Close()
+
 	_, err = newfile.Write(new_PDF)
+
+	fmt.Println("[SUCCESS]Successfully merged both files")
 }
