@@ -7,11 +7,6 @@ import (
 	"PolyMixer/messages"
 )
 
-// NOTE: use this to create a new file from the combination of all slices
-// testCreate, err := os.Create("testcreate.mp3")
-// defer testCreate.Close()
-// _, err = testCreate.Write(mp3Body)
-
 // basically cut his head we don't need it
 func mp3_get_body(file *os.File) *[]byte {
 	fileInfo, err := file.Stat()
@@ -44,8 +39,7 @@ type ObjMap_t struct {
 	endobjId map[int]int
 }
 
-// NOTE: this file has been mutilated way to many times remember to use the full file for embedding mp3
-func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *os.File, objRefPtr *Xref_ObjMap_t, bsfXref *[]byte) {
+func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *[]byte, objRefPtr *Xref_ObjMap_t, bsfXref *[]byte) {
 	objMap := &ObjMap_t{
 		objIdx_and_ID: make(map[int]int),
 		endobjId:      make(map[int]int),
@@ -55,17 +49,16 @@ func Pdf_open(file *os.File) (objId, cutTo int, pdfCpy *os.File, objRefPtr *Xref
 		messages.E_stat_read(err)
 	}
 	fmt.Printf("[PROCESS]Extracting data from %v\n", fileInfo.Name())
+
 	byteSlice_toXref, byteSlice_fromXref, xref_start_at := Find_xref(file)
+
 	Find_all_obj(byteSlice_toXref, objMap)
+
 	objRefPtr, firstFoundID := Find_ID_reference(byteSlice_fromXref, objMap, xref_start_at)
+
 	cutTo = Cut_HEAD_to(objMap, file, firstFoundID)
 
-	pdfCpy, err = os.Open(fileInfo.Name())
-	if err != nil {
-		messages.E_open_file(fileInfo.Name(), err)
-	}
-
-	return objId, cutTo, pdfCpy, objRefPtr, byteSlice_fromXref
+	return objId, cutTo, byteSlice_toXref, objRefPtr, byteSlice_fromXref
 }
 
 func Create_audio_object(ptrMP3 *[]byte, lastObjID int) (obj *[]byte, size int) {
@@ -83,4 +76,22 @@ func Create_audio_object(ptrMP3 *[]byte, lastObjID int) (obj *[]byte, size int) 
 	objSize := len(mergeOBJ)
 
 	return &mergeOBJ, objSize
+}
+
+func Mix_MP3_and_PDF(filePdf, bsfXref, mp3Obj *[]byte, cutToIDX int, newName string) {
+	fullPDF := *filePdf
+	pdfHEAD := fullPDF[:cutToIDX+1]
+	pdfBODY := fullPDF[cutToIDX:]
+
+	new_PDF := pdfHEAD
+	new_PDF = append(new_PDF, *mp3Obj...)
+	new_PDF = append(new_PDF, pdfBODY...)
+	new_PDF = append(new_PDF, *bsfXref...)
+
+	newfile, err := os.Create(newName)
+	if err != nil {
+		return
+	}
+
+	_, err = newfile.Write(new_PDF)
 }

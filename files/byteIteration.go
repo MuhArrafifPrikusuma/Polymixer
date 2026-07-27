@@ -11,17 +11,6 @@ import (
 	"PolyMixer/messages"
 )
 
-/* NOTE:
-objects ID is actually not in order so i can just take the very last object ID then increment by one to create
-new object with that id which will be placed in the very first slot after the header and fill it with mp3.
-after that i need to recalculate all byte offset by running find_all_obj again and i need to find all new objects
-byte offset and after that i will then need to make a function to trackdown each of this object id and which
-index they are in before the mp3 append to determine which reference table should be modified later on.
-and i will need to rerun that function after append to finally find the new byte offset of all object and replace
-the old reference table with new one
-*/
-
-// NOTE: also don't forget to change the startxref byte offset right before EOF. <- do this after appending
 func Find_xref(f *os.File) (bs, bsfXref *[]byte, xref_start int) {
 	fileStat, err := f.Stat()
 	if err != nil {
@@ -157,7 +146,6 @@ func read_xref_data(bsfXref *[]byte) (startP, numOIdx, lastlf int) {
 	return sprt_field[0], sprt_field[1], lastlf
 }
 
-// NOTE: return from the size of fulldata
 func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (ptrXrefDat *Xref_ObjMap_t, firstFoundIDoffset int) {
 	refID := 0
 
@@ -176,9 +164,6 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (pt
 		xref_BObjoffset: make(map[int]Objref_Table_t),
 	}
 
-	// NOTE: this should also get the relative index of all fields and convert them to number and store
-	// them in a hash with that looks like -> map[reference ID]relative index and after append that's when we
-	// combined xref with body and then give xref the absolute indexes
 	for {
 		prepareField := fulldata[startP+1:]
 		target := []byte("\n")
@@ -198,7 +183,6 @@ func Find_ID_reference(bsfXref *[]byte, objMap *ObjMap_t, bsXref_startp int) (pt
 		var field []byte
 		objbyte_off_int, objgenNumber_int := 0, 0
 
-		// NOTE: Group data to struct
 		for _, field = range table_fields {
 			var err error
 			fieldPtr := uintptr(unsafe.Pointer(&field[0]))
@@ -259,9 +243,7 @@ func Cut_HEAD_to(objMapData *ObjMap_t, file *os.File, firstFoundID int) int {
 
 // take replace startxref with []new data
 func StartXref_refOffset(bsfXref *[]byte, added int) *[]byte {
-	// NOTE: remember to remove all of this temporary print statements
 	fulldata := *bsfXref
-	fmt.Println(len(fulldata))
 
 	fstartxref := bytes.Index(fulldata, []byte("startxref"))
 	flf := bytes.IndexByte(fulldata[fstartxref:], '\n')
@@ -273,19 +255,14 @@ func StartXref_refOffset(bsfXref *[]byte, added int) *[]byte {
 	} else {
 		fnlf += flf
 	}
-	fmt.Println(flf, fnlf)
 	startxref_valF := bytes.Fields(fulldata[flf:fnlf])
 
 	startRefInt, err := strconv.Atoi(string(startxref_valF[0]))
 	if err != nil {
 		messages.E_strconv_atoi(err)
 	}
-	fmt.Println(startxref_valF[0])
-	fmt.Println(startRefInt)
-	fmt.Println(added)
 
 	new_startRefByte := strconv.Itoa(startRefInt + added)
-	fmt.Println(new_startRefByte)
 
 	var buf bytes.Buffer
 	buf.Write(fulldata[:flf])
@@ -293,10 +270,6 @@ func StartXref_refOffset(bsfXref *[]byte, added int) *[]byte {
 	buf.Write(fulldata[fnlf:])
 
 	newXref := buf.Bytes()
-	fmt.Println(newXref)
 
 	return &newXref
-}
-
-func Mix_MP3_and_PDF(filePdf *os.File, bsfXref, mp3Obj *[]byte, cutToIDX int, objRefTable *Xref_ObjMap_t) {
 }
