@@ -16,23 +16,22 @@ func TakeArg(arg *Arguments) {
 	if len(os.Args) < 2 {
 		log.Fatal("Error: Please insert files")
 	}
-	if len(os.Args) > 3 {
+	if len(os.Args) > 4 {
 		log.Fatal("Cannot process more than 2 files... yet")
 	}
 
-	var lastObjId, appendToIdx int
-	var ptrMp3, ptrPdf *os.File
-	var fileType string
-	var objRefPtr *Xref_ObjMap_t
+	var lastObjId, cutToIdx, objSize int
+	var ptrMp3, newObj, bsfXref, ptrPdf *[]byte
+	var fileType, fname string
 
-	if len(os.Args) >= 3 {
+	if len(os.Args) >= 4 {
 		file, err := os.Open(os.Args[1])
 		if err != nil {
 			messages.E_open_file(os.Args[1], err)
 		}
 
 		arg.File1 = file
-		fileType, lastObjId, appendToIdx, ptrMp3, ptrPdf, objRefPtr = getHeader(arg.File1)
+		fileType, lastObjId, cutToIdx, ptrMp3, ptrPdf, _, bsfXref = getHeader(arg.File1)
 		messages.S_open_file(arg.File1, fileType)
 
 		file, err = os.Open(os.Args[2])
@@ -41,23 +40,26 @@ func TakeArg(arg *Arguments) {
 			messages.E_open_file(os.Args[2], err)
 		}
 		arg.File2 = file
-		fileType, tmplastObjId, tmpappendToIdx, tmpptrMp3, tmpptrPdf, tmpobjRefPtr := getHeader(arg.File2)
+		fileType, tmplastObjId, tmpcutToIdx, tmpptrMp3, tmpptrPdf, _, tmpbsxfXref := getHeader(arg.File2)
+
+		fname = os.Args[3]
 
 		if fileType == "PDF" {
 			lastObjId = tmplastObjId
 			appendToIdx = tmpappendToIdx
 			ptrPdf = tmpptrPdf
-			objRefPtr = tmpobjRefPtr
+			bsfXref = tmpbsxfXref
 		} else if fileType == "MP3" {
 			ptrMp3 = tmpptrMp3
 		}
 		messages.S_open_file(arg.File2, fileType)
 		Create_audio_object(objRefPtr, ptrPdf, ptrMp3, appendToIdx, lastObjId)
 	}
-	Mix_MP3_and_PDF(ptrPdf, ptrMp3, appendToIdx, lastObjId)
+	newXrefSlice := StartXref_refOffset(bsfXref, objSize)
+	Mix_MP3_and_PDF(ptrPdf, newXrefSlice, newObj, cutToIdx, fname)
 }
 
-func getHeader(file *os.File) (strReturn string, lastObjId, appendToIdx int, ptrMp3, ptrPdf *os.File, objRefPtr *Xref_ObjMap_t) {
+func getHeader(file *os.File) (strReturn string, lastObjId, cutToIdx int, ptrMp3, ptrPdf *[]byte, objRefPtr *Xref_ObjMap_t, bsfXref *[]byte) {
 	buffer := make([]byte, 4)
 
 	_, err := file.ReadAt(buffer, 0)
